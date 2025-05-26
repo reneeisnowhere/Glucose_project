@@ -1,0 +1,167 @@
+---
+title: "Fastqc_initial"
+author: "Renee Matthews"
+date: "2025-05-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+			dev = c("png","pdf")
+	
+)
+```
+
+```{css, echo=FALSE}
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+pre[class] {
+  max-height: 200px;
+}
+```
+
+```{r package loading}
+library(tidyverse)
+library(readr)
+library(kableExtra)
+library(DT)
+library(readr)
+library(edgeR)
+library(ComplexHeatmap)
+library(data.table)
+library(genomation)
+library(GenomicRanges)
+library(readxl)
+```
+
+
+##### Loading data
+```{r Creating annodata file, eval=FALSE}
+NGS_RNA_Samples_OJ <- read_excel("C:/Users/renee/Other_projects_data/Glucose_files/NGS_RNA_Samples_OJ.xlsx")
+sample_info <- read_excel("C:/Users/renee/Other_projects_data/Glucose_files/Version5_Glucose_Samples_RNA_extraction_OJ_240905.xlsx")
+
+organized_sample_info <- sample_info %>% 
+  dplyr::select(Sample_ID,Individual,Treatment:Time,Replicate,Line,'Batch#') %>% 
+  mutate(Replicate=case_match(Replicate,1~"A",
+                              2~"B",
+                             .default = "Try again")) %>% 
+  left_join(., (NGS_RNA_Samples_OJ %>% 
+                  dplyr::rename("Core_ID"="Sample_ID")),
+            c("Sample_ID"="Sample_name")) %>% 
+  dplyr::select(Sample_ID:Core_ID) %>% 
+  write_tsv(.,"data/Annotation_data/organized_sample_info.tsv")
+```
+
+```{r fastqc files initial}
+multiqc_fastqc <- read_delim("C:/Users/renee/Other_projects_data/Glucose_files/fastq_files/Ward_Run1113/multiqc_files/multiqc_data/multiqc_fastqc.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+multiqc_fastqc_genstat <- read_delim("C:/Users/renee/Other_projects_data/Glucose_files/fastq_files/Ward_Run1113/multiqc_files/multiqc_data/multiqc_general_stats.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+
+multiqc_fastqc %>% 
+  left_join(., multiqc_fastqc_genstat) %>% 
+  write_tsv(.,"data/Fastqc_data/Fastqc_multiqc_report_RUN1113.tsv")
+##############################################
+multiqc_fastqc1 <- read_delim("C:/Users/renee/Other_projects_data/Glucose_files/fastq_files/Ward_Run1144_RepeatRun1113/multiqc_files/multiqc_data/multiqc_fastqc.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+multiqc_fastqc_genstat1 <- read_delim("C:/Users/renee/Other_projects_data/Glucose_files/fastq_files/Ward_Run1144_RepeatRun1113/multiqc_files/multiqc_data/multiqc_general_stats.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+
+multiqc_fastqc1 %>% 
+  left_join(., multiqc_fastqc_genstat1) %>% 
+  write_tsv(.,"data/Fastqc_data/Fastqc_multiqc_report_RUN1144.tsv")
+
+
+```
+### Reads by sample
+```{r reads by sample, fig.width=12}
+MQC_1113 <- multiqc_fastqc %>% 
+  left_join(., multiqc_fastqc_genstat) %>% 
+  extract(., Sample, into = c("prefix","read"), regex= "(.+)_R(\\d+)", remove=FALSE) %>% 
+  mutate(read = paste0("R", read))
+
+MQC_1144 <- multiqc_fastqc1 %>% 
+  left_join(., multiqc_fastqc_genstat1) %>% 
+  extract(., Sample, into = c("prefix","read"), regex= "(.+)_R(\\d+)", remove=FALSE) %>% 
+  mutate(read = paste0("R", read))
+
+MQC_1113 %>% 
+  dplyr::filter(read=="R1") %>% 
+  ggplot(., aes(x=Sample,y=`Total Sequences`))+
+  geom_col(position="dodge",aes()) + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("count")+
+  ggtitle("Run 1113, Read 1 sequences")
+MQC_1113 %>% 
+  dplyr::filter(read=="R2") %>% 
+  ggplot(., aes(x=Sample,y=`Total Sequences`))+
+  geom_col(position="dodge",aes()) + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("count")+
+  ggtitle("Run 1113, Read 2 sequences")
+
+MQC_1144 %>% 
+  dplyr::filter(read=="R1") %>% 
+  ggplot(., aes(x=Sample,y=`Total Sequences`))+
+  geom_col(position="dodge",aes()) + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("count")+
+  ggtitle("Run 1144, Read 1 sequences")
+MQC_1144 %>% 
+  dplyr::filter(read=="R2") %>% 
+  ggplot(., aes(x=Sample,y=`Total Sequences`))+
+  geom_col(position="dodge",aes()) + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("count")+
+  ggtitle("Run 1144, Read 2 sequences")
+
+```
+
+### Percent duplication
+
+
+```{r percent dups, fig.width=12}
+
+MQC_1113 %>% 
+  dplyr::filter(read=="R1") %>% 
+  ggplot(., aes(x=Sample,y=`FastQC_mqc-generalstats-fastqc-percent_duplicates`))+
+  geom_col(position="dodge",fill="purple1") + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("percent duplication")+
+  ggtitle("Run 1113, Read 1 sequences, percent duplicates")
+MQC_1113 %>% 
+  dplyr::filter(read=="R2") %>% 
+  ggplot(., aes(x=Sample,y=`FastQC_mqc-generalstats-fastqc-percent_duplicates`))+
+  geom_col(position="dodge",fill="purple1") + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("percent duplication")+
+  ggtitle("Run 1113, Read 2 sequences, percent duplicates")
+
+MQC_1144 %>% 
+  dplyr::filter(read=="R1") %>% 
+  ggplot(., aes(x=Sample,y=`FastQC_mqc-generalstats-fastqc-percent_duplicates`))+
+  geom_col(position="dodge",fill="cornflowerblue") + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("percent duplication")+
+  ggtitle("Run 1144, Read 1 sequences, percent duplicates")
+MQC_1144 %>% 
+  dplyr::filter(read=="R2") %>% 
+ ggplot(., aes(x=Sample,y=`FastQC_mqc-generalstats-fastqc-percent_duplicates`))+
+  geom_col(position="dodge",fill="cornflowerblue") + 
+  theme(axis.text.x=element_text(vjust=.2,angle=90)) +
+  ylab("percent duplication")+
+  ggtitle("Run 1144, Read 2 sequences, percent duplicates")
+
+
+```
+
