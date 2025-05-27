@@ -164,4 +164,119 @@ MQC_1144 %>%
 
 
 ```
+#### loading concatenated data
+
+```{r concat loading}
+multiqc_fastqc_concat <- read_delim("C:/Users/renee/Other_projects_data/Glucose_files/concatenated_fastqc/multiqc_summary/multiqc_data/multiqc_fastqc.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+multiqc_fastqc_genstat_concat <- read_delim("C:/Users/renee/Other_projects_data/Glucose_files/concatenated_fastqc/multiqc_summary/multiqc_data/multiqc_general_stats.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+sample_info_concat <- read_tsv("data/Annotation_data/organized_sample_info.tsv")
+```
+
+```{r}
+MQC_concat <-
+multiqc_fastqc_concat %>% 
+  left_join(., multiqc_fastqc_genstat_concat) %>% 
+  extract(., Sample, into = c("prefix","read"), regex= "(.+)_R(\\d+)", remove=FALSE) %>% 
+  mutate(read = paste0("R", read)) %>% 
+  left_join(., sample_info_concat, by=c("prefix"="Core_ID"))
+
+plot_dataframe <-MQC_concat %>% 
+  dplyr::select(prefix, read, Sample,'Total Sequences',total_deduplicated_percentage,`FastQC_mqc-generalstats-fastqc-percent_duplicates`:`FastQC_mqc-generalstats-fastqc-total_sequences`,Sample_ID:Line) %>% 
+  dplyr::rename("Conc"=`Conc(mM)`) %>% 
+  rename_with(
+    .cols = starts_with("FastQC_mqc-generalstats-fastqc-"),
+    .fn = ~ str_replace(., "FastQC_mqc-generalstats-fastqc-", "")
+  ) %>% 
+  mutate(Time=factor(Time, levels = c("2hr","24hr","1week")),
+         Conc = factor(Conc, levels= c("0","5","5+25","30")))
+
+```
+
+### Total sequences across samples
+```{r tot-seq concat, fig.width=14}
+plot_dataframe %>% 
+dplyr::filter(read=="R2") %>% 
+  ggplot(., aes(x=prefix,y=`Total Sequences`,fill=Treatment))+
+  geom_col(position="dodge") + 
+  geom_text(aes(label = Sample_ID),
+            position = position_stack(vjust = 0.5),
+            angle    = 90) +
+   scale_y_continuous(expand = c(0, 0))+
+  theme_minimal()+
+  theme(axis.text.x=element_text(vjust=.2,angle=90),
+        legend.position = "bottom") +
+  ylab("count")+
+  ggtitle("Fastqc Concatenated, Total read count")
+```
+
+### Total duplication across samples
+```{r tot-dup concat, fig.width=14}
+
+plot_dataframe %>% 
+dplyr::filter(read=="R1") %>% 
+  ggplot(., aes(x=prefix,y=percent_duplicates,fill=Treatment))+
+  geom_col(position="dodge") + 
+  geom_text(aes(label = Sample_ID),
+            position = position_stack(vjust = 0.5),
+            angle    = 90) +
+   scale_y_continuous(expand = c(0, 0))+
+  theme_minimal()+
+  theme(axis.text.x=element_text(vjust=.2,angle=90),
+        legend.position = "bottom") +
+  ylab("count")+
+  ggtitle("Fastqc Concatenated, duplication amount Read 1")
+
+
+plot_dataframe %>% 
+dplyr::filter(read=="R2") %>% 
+  ggplot(., aes(x=prefix,y=percent_duplicates,fill=Treatment))+
+  geom_col(position="dodge") + 
+  geom_text(aes(label = Sample_ID),
+            position = position_stack(vjust = 0.5),
+            angle    = 90) +
+   scale_y_continuous(expand = c(0, 0))+
+  theme_minimal()+
+  theme(axis.text.x=element_text(vjust=.2,angle=90),
+        legend.position = "bottom") +
+  ylab("count")+
+  ggtitle("Fastqc Concatenated, duplication amount Read 2")
+```
+### Boxplot of counts by time, treatment, individual, concentration
+
+
+```{r Boxplots}
+plot_dataframe %>% 
+  dplyr::filter(read=="R1") %>% 
+    ggplot(., aes(x=Treatment,y=`Total Sequences`,fill=Treatment))+
+  geom_boxplot()+
+  theme_minimal()+
+  ggtitle("Counts across treatments")
+
+plot_dataframe %>% 
+  dplyr::filter(read=="R1")%>% 
+    ggplot(., aes(x=Line,y=total_sequences, fill = Line))+
+  geom_boxplot()+
+  theme_minimal()+
+  ggtitle("Counts across individual")
+
+plot_dataframe %>% 
+  dplyr::filter(read=="R1")%>% 
+  ggplot(., aes(x=Time,y=total_sequences, fill = Time))+
+  geom_boxplot()+
+  theme_minimal()+
+  ggtitle("Counts across time")
+
+plot_dataframe %>% 
+  dplyr::filter(read=="R1")%>% 
+  ggplot(., aes(x=Conc,y=total_sequences, fill = Conc))+
+  geom_boxplot()+
+  theme_minimal()+
+  ggtitle("Counts across concentration")
+
+
+```
 
