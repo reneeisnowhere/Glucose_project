@@ -33,10 +33,10 @@ library(kableExtra)
 library(DT)
 library(readr)
 library(edgeR)
-library(ComplexHeatmap)
+# library(ComplexHeatmap)
 library(data.table)
-library(genomation)
-library(GenomicRanges)
+# library(genomation)
+# library(GenomicRanges)
 library(readxl)
 ```
 
@@ -258,21 +258,21 @@ plot_dataframe %>%
 
 plot_dataframe %>% 
   dplyr::filter(read=="R1")%>% 
-    ggplot(., aes(x=Line,y=total_sequences, fill = Line))+
+    ggplot(., aes(x=Line,y=`Total Sequences`, fill = Line))+
   geom_boxplot()+
   theme_minimal()+
   ggtitle("Counts across individual")
 
 plot_dataframe %>% 
   dplyr::filter(read=="R1")%>% 
-  ggplot(., aes(x=Time,y=total_sequences, fill = Time))+
+  ggplot(., aes(x=Time,y=`Total Sequences`, fill = Time))+
   geom_boxplot()+
   theme_minimal()+
   ggtitle("Counts across time")
 
 plot_dataframe %>% 
   dplyr::filter(read=="R1")%>% 
-  ggplot(., aes(x=Conc,y=total_sequences, fill = Conc))+
+  ggplot(., aes(x=Conc,y=`Total Sequences`, fill = Conc))+
   geom_boxplot()+
   theme_minimal()+
   ggtitle("Counts across concentration")
@@ -280,3 +280,26 @@ plot_dataframe %>%
 
 ```
 
+#### looking at replicate and original (75-1)
+```{r}
+plot_dataframe %>% 
+  dplyr::filter(read=="R1"& Individual=="1") %>% 
+    ggplot(., aes(x=Replicate,y=`Total Sequences`,fill=Treatment))+
+  geom_boxplot()+
+  geom_point(position = position_dodge(width = 0.9), 
+             shape = 21, size = 2, stroke = 0.5, aes(fill = Treatment))+
+  theme_minimal()+
+  ggtitle("Counts across treatments")
+
+
+plot_dataframe %>% 
+  dplyr::filter(read=="R1"& Individual=="1") %>% 
+    ggplot(., aes(x=Replicate,y=`Total Sequences`,fill=Time))+
+  geom_boxplot()+
+  geom_point(position = position_dodge(width = 0.9), 
+             shape = 21, size = 2, stroke = 0.5, aes(fill = Time))+
+  theme_minimal()+
+  ggtitle("Counts across treatments")
+
+
+```
