@@ -8,4 +8,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+Hello!  I am working on understanding the effects of Glucose on Cardiomyocytes. The cell work was performed and collected by Omar Johnson.   
+
+[Initial QC of fastq files](https://reneeisnowhere/github.io/Glucose_project/Fastqc_initial.html)
