@@ -1,0 +1,350 @@
+---
+title: "Differential_expression"
+author: "Renee Matthews"
+date: "2025-05-30"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	dev = c("png","pdf")
+)
+```
+
+```{css, echo=FALSE}
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+pre[class] {
+  max-height: 200px;
+}
+```
+
+```{r packages}
+library(tidyverse)
+library(kableExtra)
+library(broom)
+library(RColorBrewer)
+library(ChIPseeker)
+library("TxDb.Hsapiens.UCSC.hg38.knownGene")
+library("org.Hs.eg.db")
+library(rtracklayer)
+library(edgeR)
+library(ggfortify)
+library(limma)
+library(readr)
+library(BiocGenerics)
+library(gridExtra)
+library(VennDiagram)
+library(scales)
+library(BiocParallel)
+library(ggpubr)
+library(devtools)
+library(eulerr)
+library(ggsignif)
+library(plyranges)
+library(ggrepel)
+library(ComplexHeatmap)
+library(cowplot)
+library(smplot2)
+library(data.table)
+library(ChIPpeakAnno)
+
+```
+
+
+
+```{r data loading}
+
+sample_info_concat <- read_tsv("data/Annotation_data/organized_sample_info.tsv")
+Counts_table <- read_tsv("data/Annotation_data/Full_counts_table.tsv") 
+
+raw_counts <- Counts_table %>% 
+  column_to_rownames("Geneid") %>% 
+  as.matrix()
+new_names <-
+sample_info_concat %>% 
+  mutate(new_trt= case_when(`Conc(mM)`=="0"~ "low",
+                            `Conc(mM)`=="5"~ "norm",
+                            `Conc(mM)`=="5+25" ~"osnorm",
+                            `Conc(mM)`=="30"~ "high")) %>% 
+  mutate(sex=case_when(Line=="75-1"~ "f",
+                       Line=="87-1"~ "f",
+                       Line=="78-1" ~"f",
+                       Line=="17-3"~ "m",
+                       Line=="84-1"~"m",
+                       Line=="90-1"~"m")) %>% 
+  mutate(new_name=paste0(Individual,"_",new_trt,"_",Time,"_",sex,"_",Replicate)) 
+
+mapped <- AnnotationDbi::select(org.Hs.eg.db,
+                 keys = row.names(raw_counts),
+                 columns = c("SYMBOL"),
+                 keytype = "ENTREZID")
+
+mapped_unique_symbolref <- mapped %>%
+  as.data.frame() %>% 
+  group_by(ENTREZID) %>%
+  dplyr::slice(1) %>%
+  ungroup()
+
+filter_out_sample_list <-new_names %>% 
+  dplyr::filter(Core_ID!= "MCW_OJ_JT_R_16") %>% 
+  dplyr::filter(Replicate != "B")
+
+
+
+```
+
+
+```{r subsetting and renaming columns}
+subset_raw_counts <- raw_counts[,colnames(raw_counts) %in% filter_out_sample_list$Core_ID]
+rename_vec <- setNames(new_names$new_name, new_names$Core_ID)
+valid_cols <- intersect(colnames(subset_raw_counts), new_names$Core_ID)
+subset_raw_counts <- subset_raw_counts %>% 
+  as.data.frame() %>% 
+  rename_with(~ rename_vec[.x], .cols = all_of(valid_cols)) %>% 
+  as.matrix()
+
+```
+
+### Filtering out low expression genes
+Filtering out lowly expressed genes using rowMeans >0 on the matrix without sample #16 (outlier) and without replicate B (impacts individual 1)
+
+```{r annotation df}
+annotation_dataframe <-  data.frame(timeset = colnames(subset_raw_counts)) %>% 
+  separate_wider_delim(.,cols=timeset, names=c("indv","glucose","time","sex","rep"),delim="_")%>% 
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")),
+         condition=interaction(time,glucose),
+         names=paste0(indv,"_",glucose,"_",time,"_",sex,"_",rep)) %>% 
+  mutate(condition=factor(condition)) %>% 
+  column_to_rownames("names")
+
+
+```
+
+```{r filtering low counts}
+lcpm <- cpm(subset_raw_counts, log= TRUE)
+  ### for determining the basic cutoffs
+subset_filt_raw_counts <- subset_raw_counts[rowMeans(lcpm)> 0,]
+dim(subset_filt_raw_counts)
+```
+### Correlation heatmap of log2cpm
+```{r corrheat, fig.height=10, fig.width=16}
+cor_lcpm_counts_pearson <- subset_filt_raw_counts %>% 
+  cpm(., log = TRUE) %>% 
+  cor(.,method = "pearson")
+
+cor_lcpm_counts_spearman <- subset_filt_raw_counts %>% 
+  cpm(., log = TRUE) %>% 
+  cor(.,method = "spearman")
+
+
+counts_corr_mat <-annotation_dataframe
+
+###pulling color palette:
+cb_palette <- brewer.pal(6, "Set1") 
+dr_palette <- brewer.pal(4,"Dark2")
+con_palette <- brewer.pal(12,"Set3")
+
+     
+mat_colors <- list(
+  indv     = setNames(cb_palette, unique(counts_corr_mat$indv)),
+  glucose  = setNames(dr_palette, unique(counts_corr_mat$glucose)),
+  time     = setNames(c("cadetblue3", "darkorchid3", "red4"), unique(counts_corr_mat$time)),
+  sex      = setNames(c("purple", "orange"), unique(counts_corr_mat$sex)),
+  rep      = setNames(c("grey"), 
+                      unique(counts_corr_mat$rep)),
+  condition = setNames(con_palette, unique(counts_corr_mat$condition))
+)
+
+
+htanno_full_pearson <-  ComplexHeatmap::HeatmapAnnotation(df = counts_corr_mat, col = mat_colors)
+Heatmap(cor_lcpm_counts_pearson, 
+        column_title="Filtered log2cpm pearson correlation",
+        top_annotation = htanno_full_pearson
+        )
+
+htanno_full_spearman <-  ComplexHeatmap::HeatmapAnnotation(df = counts_corr_mat, col = mat_colors)
+Heatmap(cor_lcpm_counts_spearman, 
+        top_annotation = htanno_full_spearman,
+        column_title="Filtered log2cpm spearman correlation")
+
+```
+### PCA analysis of subset data
+
+```{r functions}
+prop_var_percent <- function(pca_result){ 
+  # Ensure the input is a PCA result object
+  if (!inherits(pca_result, "prcomp")) {
+    stop("Input must be a result from prcomp()")
+  }
+  
+  # Get the standard deviations from the PCA result
+  sdev <- pca_result$sdev
+  
+  # Calculate the proportion of variance
+  proportion_variance <- (sdev^2) / sum(sdev^2)*100
+  
+  return(proportion_variance)
+}
+
+get_regr_pval <- function(mod) {
+  # Returns the p-value for the Fstatistic of a linear model
+  # mod: class lm
+  stopifnot(class(mod) == "lm")
+  fstat <- summary(mod)$fstatistic
+  pval <- 1 - pf(fstat[1], fstat[2], fstat[3])
+  return(pval)
+}
+
+plot_versus_pc <- function(df, pc_num, fac) {
+  # df: data.frame
+  # pc_num: numeric, specific PC for plotting
+  # fac: column name of df for plotting against PC
+  pc_char <- paste0("PC", pc_num)
+  # Calculate F-statistic p-value for linear model
+  pval <- get_regr_pval(lm(df[, pc_char] ~ df[, fac]))
+  if (is.numeric(df[, f])) {
+    ggplot(df, aes_string(x = f, y = pc_char)) + geom_point() +
+      geom_smooth(method = "lm") + labs(title = sprintf("p-val: %.2f", pval))
+  } else {
+    ggplot(df, aes_string(x = f, y = pc_char)) + geom_boxplot() +
+      labs(title = sprintf("p-val: %.2f", pval))
+  }
+}
+
+plot_versus_pc1 <- function(df, pc_num, fac, rotate_x = FALSE) {
+  pc_char <- paste0("PC", pc_num)
+  pval <- get_regr_pval(lm(df[[pc_char]] ~ df[[fac]]))
+  
+  rotate_labels <- theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+  if (is.numeric(df[[fac]])) {
+    p <- ggplot(df, aes_string(x = fac, y = pc_char)) +
+      geom_point() +
+      geom_smooth(method = "lm") +
+      labs(title = sprintf("p-val: %.2f", pval)) +
+      rotate_labels
+  } else {
+    p <- ggplot(df, aes_string(x = fac, y = pc_char)) +
+      geom_boxplot() +
+      labs(title = sprintf("p-val: %.2f", pval)) +
+      rotate_labels
+  }
+
+  return(p)
+}
+
+```
+
+```{r PCA plots}
+lcpm_filt_counts <- subset_filt_raw_counts %>% 
+  cpm(.,log = TRUE)
+ 
+df_anno_mat <- annotation_dataframe
+  
+pca_lcpm_filt <- prcomp(t(lcpm_filt_counts), scale. = TRUE)
+pca_filt_anno <- data.frame(df_anno_mat, pca_lcpm_filt$x)
+plotting_var_names <- prop_var_percent(pca_lcpm_filt)
+
+pca_filt_anno %>% 
+ggplot(.,aes(x = PC1, y = PC2, col=condition, shape=glucose, group=rep))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = indv))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides(size =3)+
+  labs(y = paste0("PC 2 (",round(plotting_var_names[2],2),"%)")
+       , x =paste0("PC 1 (",round(plotting_var_names[1],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
+
+pca_filt_anno %>% 
+ggplot(.,aes(x = PC3, y = PC4, col=condition, shape=glucose, group=rep))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = indv))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides(size =3)+
+  labs(y = paste0("PC 4 (",round(plotting_var_names[4],2),"%)")
+       , x =paste0("PC 3 (",round(plotting_var_names[3],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
+facs <- c("indv", "glucose", "time", "sex","condition")
+names(facs) <- c("Individual", "Glucose level", "Time", "Sex", "Condition(time_glucose-level)")
+
+for (f in facs) {
+  # PC1 v PC2
+  # pca_plot(pca_final_four_anno, col_var = f, shape_var = time,
+  #          title = names(facs)[which(facs == f)])
+  # print(last_plot())
+  
+  # Plot f versus PC1 and PC2
+  
+  f_v_pc1 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 1, f))
+  f_v_pc2 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 2, f))
+  f_v_pc3 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 3, f))
+  f_v_pc4 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 4, f))
+  f_v_pc5 <- gridExtra::arrangeGrob(
+  plot_versus_pc1(pca_filt_anno, 5, f) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+)
+  gridExtra::grid.arrange(f_v_pc1, f_v_pc2, f_v_pc3,f_v_pc4, f_v_pc5, ncol = 3, nrow=2, top = names(facs)[which(facs == f)])
+}
+
+```
+### DEG analysis
+```{r dgemaking}
+dge <- DGEList(counts=subset_filt_raw_counts)
+stopifnot(all(colnames(subset_filt_raw_counts) == rownames(df_anno_mat)))
+dge$samples <- cbind(dge$samples, df_anno_mat)
+dge <- calcNormFactors(dge)
+dge$samples
+```
+
+making the model matrix
+```{r mm}
+ mm <- model.matrix(~0 +condition, data=dge$samples)
+colnames(mm) <- levels(dge$samples$condition)
+colnames(mm) <- make.names(colnames(mm))
+mm
+```
+adding a
+```{r adding fits}
+y <- voom(dge, mm,plot =FALSE)
+
+corfit <- duplicateCorrelation(y, mm, block = dge$samples$indv)
+
+v <- voom(dge, mm, block = dge$samples$indv, correlation = corfit$consensus)
+
+fit <- lmFit(v, mm, block = dge$samples$indv, correlation = corfit$consensus)
+
+cm <- makeContrasts(low_2.norm_2 = `X2hr.low` -`X2hr.norm`,
+                    high_2.norm_2 = `X2hr.high` -`X2hr.norm`,
+                    osnorm_2.norm_2=`X2hr.osnorm` -`X2hr.norm`,
+                    low_24.norm_24 = `X24hr.low` -`X24hr.norm`,
+                    high_24.norm_24=`X24hr.high` -`X24hr.norm`,
+                    osnorm_24.norm_24=`X24hr.osnorm` -`X24hr.norm`,
+                    low_1week.norm_1week = `X1week.low` -`X1week.norm`,
+                    high_1week.norm_1week=`X1week.high` -`X1week.norm`,
+                    osnorm_1week.norm_1week=`X1week.osnorm` -`X1week.norm`,
+                    levels = mm)
+
+fit2<- contrasts.fit(fit, contrasts=cm)
+
+efit2 <- eBayes(fit2)
+
+results = decideTests(efit2)
+
+summary(results)                    
+
+```
+
