@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Renee Matthews" />
+
+<meta name="date" content="2025-05-30" />
+
+<title>Differential_expression</title>
+
+<script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Glucose_project</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Differential_expression</h1>
+<h4 class="author">Renee Matthews</h4>
+<h4 class="date">2025-05-30</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2025-05-30
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>Glucose_project/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.1). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20250526code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20250526)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20250526code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20250526)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomreneeisnowhereGlucoseprojecttreebddc8ae01362b9ad335f3891a4da2cad08b604bdtargetblankbddc8aea">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/reneeisnowhere/Glucose_project/tree/bddc8ae01362b9ad335f3891a4da2cad08b604bd" target="_blank">bddc8ae</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomreneeisnowhereGlucoseprojecttreebddc8ae01362b9ad335f3891a4da2cad08b604bdtargetblankbddc8aea"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/reneeisnowhere/Glucose_project/tree/bddc8ae01362b9ad335f3891a4da2cad08b604bd" target="_blank">bddc8ae</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    data/Annotation_data/
+    Ignored:    data/Fastqc_data/
+    Ignored:    data/organized_sample_info.tsv
+
+Untracked files:
+    Untracked:  code/nox_genelist.R
+
+Unstaged changes:
+    Modified:   analysis/index.Rmd
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/Diff_expression.Rmd</code>) and
+HTML (<code>docs/Diff_expression.html</code>) files. If you’ve
+configured a remote Git repository (see <code>?wflow_git_remote</code>),
+click on the hyperlinks in the table below to view the files as they
+were in that past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/reneeisnowhere/Glucose_project/blob/bddc8ae01362b9ad335f3891a4da2cad08b604bd/analysis/Diff_expression.Rmd" target="_blank">bddc8ae</a>
+</td>
+<td>
+reneeisnowhere
+</td>
+<td>
+2025-05-30
+</td>
+<td>
+first commit
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<style type="text/css">
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+pre[class] {
+  max-height: 200px;
+}
+</style>
+<pre class="r"><code>library(tidyverse)
+library(kableExtra)
+library(broom)
+library(RColorBrewer)
+library(ChIPseeker)
+library(&quot;TxDb.Hsapiens.UCSC.hg38.knownGene&quot;)
+library(&quot;org.Hs.eg.db&quot;)
+library(rtracklayer)
+library(edgeR)
+library(ggfortify)
+library(limma)
+library(readr)
+library(BiocGenerics)
+library(gridExtra)
+library(VennDiagram)
+library(scales)
+library(BiocParallel)
+library(ggpubr)
+library(devtools)
+library(eulerr)
+library(ggsignif)
+library(plyranges)
+library(ggrepel)
+library(ComplexHeatmap)
+library(cowplot)
+library(smplot2)
+library(data.table)
+library(ChIPpeakAnno)</code></pre>
+<pre class="r"><code>sample_info_concat &lt;- read_tsv(&quot;data/Annotation_data/organized_sample_info.tsv&quot;)
+Counts_table &lt;- read_tsv(&quot;data/Annotation_data/Full_counts_table.tsv&quot;) 
+
+raw_counts &lt;- Counts_table %&gt;% 
+  column_to_rownames(&quot;Geneid&quot;) %&gt;% 
+  as.matrix()
+new_names &lt;-
+sample_info_concat %&gt;% 
+  mutate(new_trt= case_when(`Conc(mM)`==&quot;0&quot;~ &quot;low&quot;,
+                            `Conc(mM)`==&quot;5&quot;~ &quot;norm&quot;,
+                            `Conc(mM)`==&quot;5+25&quot; ~&quot;osnorm&quot;,
+                            `Conc(mM)`==&quot;30&quot;~ &quot;high&quot;)) %&gt;% 
+  mutate(sex=case_when(Line==&quot;75-1&quot;~ &quot;f&quot;,
+                       Line==&quot;87-1&quot;~ &quot;f&quot;,
+                       Line==&quot;78-1&quot; ~&quot;f&quot;,
+                       Line==&quot;17-3&quot;~ &quot;m&quot;,
+                       Line==&quot;84-1&quot;~&quot;m&quot;,
+                       Line==&quot;90-1&quot;~&quot;m&quot;)) %&gt;% 
+  mutate(new_name=paste0(Individual,&quot;_&quot;,new_trt,&quot;_&quot;,Time,&quot;_&quot;,sex,&quot;_&quot;,Replicate)) 
+
+mapped &lt;- AnnotationDbi::select(org.Hs.eg.db,
+                 keys = row.names(raw_counts),
+                 columns = c(&quot;SYMBOL&quot;),
+                 keytype = &quot;ENTREZID&quot;)
+
+mapped_unique_symbolref &lt;- mapped %&gt;%
+  as.data.frame() %&gt;% 
+  group_by(ENTREZID) %&gt;%
+  dplyr::slice(1) %&gt;%
+  ungroup()
+
+filter_out_sample_list &lt;-new_names %&gt;% 
+  dplyr::filter(Core_ID!= &quot;MCW_OJ_JT_R_16&quot;) %&gt;% 
+  dplyr::filter(Replicate != &quot;B&quot;)</code></pre>
+<pre class="r"><code>subset_raw_counts &lt;- raw_counts[,colnames(raw_counts) %in% filter_out_sample_list$Core_ID]
+rename_vec &lt;- setNames(new_names$new_name, new_names$Core_ID)
+valid_cols &lt;- intersect(colnames(subset_raw_counts), new_names$Core_ID)
+subset_raw_counts &lt;- subset_raw_counts %&gt;% 
+  as.data.frame() %&gt;% 
+  rename_with(~ rename_vec[.x], .cols = all_of(valid_cols)) %&gt;% 
+  as.matrix()</code></pre>
+<div id="filtering-out-low-expression-genes" class="section level3">
+<h3>Filtering out low expression genes</h3>
+<p>Filtering out lowly expressed genes using rowMeans &gt;0 on the
+matrix without sample #16 (outlier) and without replicate B (impacts
+individual 1)</p>
+<pre class="r"><code>annotation_dataframe &lt;-  data.frame(timeset = colnames(subset_raw_counts)) %&gt;% 
+  separate_wider_delim(.,cols=timeset, names=c(&quot;indv&quot;,&quot;glucose&quot;,&quot;time&quot;,&quot;sex&quot;,&quot;rep&quot;),delim=&quot;_&quot;)%&gt;% 
+  mutate(indv=factor(indv, levels= c( &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,&quot;5&quot;,&quot;6&quot;)),
+         glucose=factor(glucose, levels=c(&quot;low&quot;, &quot;norm&quot;, &quot;osnorm&quot;, &quot;high&quot;)),
+         time=factor(time, levels = c(&quot;2hr&quot; ,&quot;24hr&quot;, &quot;1week&quot;)),
+         sex=factor(sex, levels=c(&quot;f&quot;,&quot;m&quot;)),
+         rep=factor(rep, levels=c(&quot;A&quot;,&quot;B&quot;)),
+         condition=interaction(time,glucose),
+         names=paste0(indv,&quot;_&quot;,glucose,&quot;_&quot;,time,&quot;_&quot;,sex,&quot;_&quot;,rep)) %&gt;% 
+  mutate(condition=factor(condition)) %&gt;% 
+  column_to_rownames(&quot;names&quot;)</code></pre>
+<pre class="r"><code>lcpm &lt;- cpm(subset_raw_counts, log= TRUE)
+  ### for determining the basic cutoffs
+subset_filt_raw_counts &lt;- subset_raw_counts[rowMeans(lcpm)&gt; 0,]
+dim(subset_filt_raw_counts)</code></pre>
+<pre><code>[1] 13978    71</code></pre>
+</div>
+<div id="correlation-heatmap-of-log2cpm" class="section level3">
+<h3>Correlation heatmap of log2cpm</h3>
+<pre class="r"><code>cor_lcpm_counts_pearson &lt;- subset_filt_raw_counts %&gt;% 
+  cpm(., log = TRUE) %&gt;% 
+  cor(.,method = &quot;pearson&quot;)
+
+cor_lcpm_counts_spearman &lt;- subset_filt_raw_counts %&gt;% 
+  cpm(., log = TRUE) %&gt;% 
+  cor(.,method = &quot;spearman&quot;)
+
+
+counts_corr_mat &lt;-annotation_dataframe
+
+###pulling color palette:
+cb_palette &lt;- brewer.pal(6, &quot;Set1&quot;) 
+dr_palette &lt;- brewer.pal(4,&quot;Dark2&quot;)
+con_palette &lt;- brewer.pal(12,&quot;Set3&quot;)
+
+     
+mat_colors &lt;- list(
+  indv     = setNames(cb_palette, unique(counts_corr_mat$indv)),
+  glucose  = setNames(dr_palette, unique(counts_corr_mat$glucose)),
+  time     = setNames(c(&quot;cadetblue3&quot;, &quot;darkorchid3&quot;, &quot;red4&quot;), unique(counts_corr_mat$time)),
+  sex      = setNames(c(&quot;purple&quot;, &quot;orange&quot;), unique(counts_corr_mat$sex)),
+  rep      = setNames(c(&quot;grey&quot;), 
+                      unique(counts_corr_mat$rep)),
+  condition = setNames(con_palette, unique(counts_corr_mat$condition))
+)
+
+
+htanno_full_pearson &lt;-  ComplexHeatmap::HeatmapAnnotation(df = counts_corr_mat, col = mat_colors)
+Heatmap(cor_lcpm_counts_pearson, 
+        column_title=&quot;Filtered log2cpm pearson correlation&quot;,
+        top_annotation = htanno_full_pearson
+        )</code></pre>
+<p><img src="figure/Diff_expression.Rmd/corrheat-1.png" width="1536" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>htanno_full_spearman &lt;-  ComplexHeatmap::HeatmapAnnotation(df = counts_corr_mat, col = mat_colors)
+Heatmap(cor_lcpm_counts_spearman, 
+        top_annotation = htanno_full_spearman,
+        column_title=&quot;Filtered log2cpm spearman correlation&quot;)</code></pre>
+<p><img src="figure/Diff_expression.Rmd/corrheat-2.png" width="1536" style="display: block; margin: auto;" />
+### PCA analysis of subset data</p>
+<pre class="r"><code>prop_var_percent &lt;- function(pca_result){ 
+  # Ensure the input is a PCA result object
+  if (!inherits(pca_result, &quot;prcomp&quot;)) {
+    stop(&quot;Input must be a result from prcomp()&quot;)
+  }
+  
+  # Get the standard deviations from the PCA result
+  sdev &lt;- pca_result$sdev
+  
+  # Calculate the proportion of variance
+  proportion_variance &lt;- (sdev^2) / sum(sdev^2)*100
+  
+  return(proportion_variance)
+}
+
+get_regr_pval &lt;- function(mod) {
+  # Returns the p-value for the Fstatistic of a linear model
+  # mod: class lm
+  stopifnot(class(mod) == &quot;lm&quot;)
+  fstat &lt;- summary(mod)$fstatistic
+  pval &lt;- 1 - pf(fstat[1], fstat[2], fstat[3])
+  return(pval)
+}
+
+plot_versus_pc &lt;- function(df, pc_num, fac) {
+  # df: data.frame
+  # pc_num: numeric, specific PC for plotting
+  # fac: column name of df for plotting against PC
+  pc_char &lt;- paste0(&quot;PC&quot;, pc_num)
+  # Calculate F-statistic p-value for linear model
+  pval &lt;- get_regr_pval(lm(df[, pc_char] ~ df[, fac]))
+  if (is.numeric(df[, f])) {
+    ggplot(df, aes_string(x = f, y = pc_char)) + geom_point() +
+      geom_smooth(method = &quot;lm&quot;) + labs(title = sprintf(&quot;p-val: %.2f&quot;, pval))
+  } else {
+    ggplot(df, aes_string(x = f, y = pc_char)) + geom_boxplot() +
+      labs(title = sprintf(&quot;p-val: %.2f&quot;, pval))
+  }
+}
+
+plot_versus_pc1 &lt;- function(df, pc_num, fac, rotate_x = FALSE) {
+  pc_char &lt;- paste0(&quot;PC&quot;, pc_num)
+  pval &lt;- get_regr_pval(lm(df[[pc_char]] ~ df[[fac]]))
+  
+  rotate_labels &lt;- theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+  if (is.numeric(df[[fac]])) {
+    p &lt;- ggplot(df, aes_string(x = fac, y = pc_char)) +
+      geom_point() +
+      geom_smooth(method = &quot;lm&quot;) +
+      labs(title = sprintf(&quot;p-val: %.2f&quot;, pval)) +
+      rotate_labels
+  } else {
+    p &lt;- ggplot(df, aes_string(x = fac, y = pc_char)) +
+      geom_boxplot() +
+      labs(title = sprintf(&quot;p-val: %.2f&quot;, pval)) +
+      rotate_labels
+  }
+
+  return(p)
+}</code></pre>
+<pre class="r"><code>lcpm_filt_counts &lt;- subset_filt_raw_counts %&gt;% 
+  cpm(.,log = TRUE)
+ 
+df_anno_mat &lt;- annotation_dataframe
+  
+pca_lcpm_filt &lt;- prcomp(t(lcpm_filt_counts), scale. = TRUE)
+pca_filt_anno &lt;- data.frame(df_anno_mat, pca_lcpm_filt$x)
+plotting_var_names &lt;- prop_var_percent(pca_lcpm_filt)
+
+pca_filt_anno %&gt;% 
+ggplot(.,aes(x = PC1, y = PC2, col=condition, shape=glucose, group=rep))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = indv))+
+   ggtitle(expression(&quot;PCA of log&quot;[2]*&quot;(cpm) filtered peak set&quot;))+
+  theme_bw()+
+  guides(size =3)+
+  labs(y = paste0(&quot;PC 2 (&quot;,round(plotting_var_names[2],2),&quot;%)&quot;)
+       , x =paste0(&quot;PC 1 (&quot;,round(plotting_var_names[1],2),&quot;%)&quot;))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = &quot;black&quot;))</code></pre>
+<p><img src="figure/Diff_expression.Rmd/PCA%20plots-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pca_filt_anno %&gt;% 
+ggplot(.,aes(x = PC3, y = PC4, col=condition, shape=glucose, group=rep))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = indv))+
+   ggtitle(expression(&quot;PCA of log&quot;[2]*&quot;(cpm) filtered peak set&quot;))+
+  theme_bw()+
+  guides(size =3)+
+  labs(y = paste0(&quot;PC 4 (&quot;,round(plotting_var_names[4],2),&quot;%)&quot;)
+       , x =paste0(&quot;PC 3 (&quot;,round(plotting_var_names[3],2),&quot;%)&quot;))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = &quot;black&quot;))</code></pre>
+<p><img src="figure/Diff_expression.Rmd/PCA%20plots-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>facs &lt;- c(&quot;indv&quot;, &quot;glucose&quot;, &quot;time&quot;, &quot;sex&quot;,&quot;condition&quot;)
+names(facs) &lt;- c(&quot;Individual&quot;, &quot;Glucose level&quot;, &quot;Time&quot;, &quot;Sex&quot;, &quot;Condition(time_glucose-level)&quot;)
+
+for (f in facs) {
+  # PC1 v PC2
+  # pca_plot(pca_final_four_anno, col_var = f, shape_var = time,
+  #          title = names(facs)[which(facs == f)])
+  # print(last_plot())
+  
+  # Plot f versus PC1 and PC2
+  
+  f_v_pc1 &lt;- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 1, f))
+  f_v_pc2 &lt;- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 2, f))
+  f_v_pc3 &lt;- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 3, f))
+  f_v_pc4 &lt;- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 4, f))
+  f_v_pc5 &lt;- gridExtra::arrangeGrob(
+  plot_versus_pc1(pca_filt_anno, 5, f) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+)
+  gridExtra::grid.arrange(f_v_pc1, f_v_pc2, f_v_pc3,f_v_pc4, f_v_pc5, ncol = 3, nrow=2, top = names(facs)[which(facs == f)])
+}</code></pre>
+<p><img src="figure/Diff_expression.Rmd/PCA%20plots-3.png" width="672" style="display: block; margin: auto;" /><img src="figure/Diff_expression.Rmd/PCA%20plots-4.png" width="672" style="display: block; margin: auto;" /><img src="figure/Diff_expression.Rmd/PCA%20plots-5.png" width="672" style="display: block; margin: auto;" /><img src="figure/Diff_expression.Rmd/PCA%20plots-6.png" width="672" style="display: block; margin: auto;" /><img src="figure/Diff_expression.Rmd/PCA%20plots-7.png" width="672" style="display: block; margin: auto;" />
+### DEG analysis</p>
+<pre class="r"><code>dge &lt;- DGEList(counts=subset_filt_raw_counts)
+stopifnot(all(colnames(subset_filt_raw_counts) == rownames(df_anno_mat)))
+dge$samples &lt;- cbind(dge$samples, df_anno_mat)
+dge &lt;- calcNormFactors(dge)
+dge$samples</code></pre>
+<pre><code>                   group lib.size norm.factors indv glucose  time sex rep
+1_norm_2hr_f_A         1 14992620    0.9984893    1    norm   2hr   f   A
+1_low_2hr_f_A          1 16045703    0.9830013    1     low   2hr   f   A
+1_low_24hr_f_A         1 20680900    0.9587281    1     low  24hr   f   A
+1_low_1week_f_A        1 16272792    0.9587507    1     low 1week   f   A
+2_norm_2hr_m_A         1 17173224    1.0035054    2    norm   2hr   m   A
+2_high_2hr_m_A         1 16639064    1.0100647    2    high   2hr   m   A
+2_osnorm_2hr_m_A       1 18644235    1.0250138    2  osnorm   2hr   m   A
+2_high_24hr_m_A        1 17803576    1.0239424    2    high  24hr   m   A
+2_osnorm_24hr_m_A      1 18053974    1.0298807    2  osnorm  24hr   m   A
+2_norm_1week_m_A       1 19478441    1.0324606    2    norm 1week   m   A
+1_high_2hr_f_A         1 16167349    0.9761718    1    high   2hr   f   A
+2_high_1week_m_A       1 19658777    1.0287449    2    high 1week   m   A
+2_osnorm_1week_m_A     1 18811741    1.0175439    2  osnorm 1week   m   A
+2_low_2hr_m_A          1 16403321    1.0256340    2     low   2hr   m   A
+2_low_24hr_m_A         1 17181554    1.0315049    2     low  24hr   m   A
+2_low_1week_m_A        1 18651903    1.0215598    2     low 1week   m   A
+3_norm_2hr_f_A         1 16776928    0.9850247    3    norm   2hr   f   A
+3_high_2hr_f_A         1 17092629    1.0077790    3    high   2hr   f   A
+3_osnorm_2hr_f_A       1 17719191    1.0054248    3  osnorm   2hr   f   A
+3_norm_24hr_f_A        1 18091965    1.0205030    3    norm  24hr   f   A
+3_high_24hr_f_A        1 28070821    1.0380944    3    high  24hr   f   A
+1_osnorm_2hr_f_A       1 15997510    0.9693999    1  osnorm   2hr   f   A
+3_osnorm_24hr_f_A      1 19889428    1.0152826    3  osnorm  24hr   f   A
+3_norm_1week_f_A       1 18113829    1.0124075    3    norm 1week   f   A
+3_high_1week_f_A       1 20129339    1.0128988    3    high 1week   f   A
+3_osnorm_1week_f_A     1 18088287    1.0024521    3  osnorm 1week   f   A
+3_low_2hr_f_A          1 18277207    1.0175695    3     low   2hr   f   A
+3_low_24hr_f_A         1 20035798    1.0127316    3     low  24hr   f   A
+3_low_1week_f_A        1 20259255    0.9887022    3     low 1week   f   A
+4_norm_2hr_m_A         1 19051284    0.9923758    4    norm   2hr   m   A
+4_high_2hr_m_A         1 20669141    0.9996293    4    high   2hr   m   A
+4_osnorm_2hr_m_A       1 18629905    0.9795338    4  osnorm   2hr   m   A
+1_norm_24hr_f_A        1 16637655    0.9145545    1    norm  24hr   f   A
+4_norm_24hr_m_A        1 18811203    1.0352214    4    norm  24hr   m   A
+4_high_24hr_m_A        1 20423554    1.0219497    4    high  24hr   m   A
+4_osnorm_24hr_m_A      1 17914423    1.0270885    4  osnorm  24hr   m   A
+4_norm_1week_m_A       1 19235598    1.0163009    4    norm 1week   m   A
+4_high_1week_m_A       1 18374945    1.0017527    4    high 1week   m   A
+4_osnorm_1week_m_A     1 17121395    0.9876747    4  osnorm 1week   m   A
+4_low_2hr_m_A          1 18251238    1.0073954    4     low   2hr   m   A
+4_low_24hr_m_A         1 17964230    1.0029929    4     low  24hr   m   A
+4_low_1week_m_A        1 18818657    1.0047943    4     low 1week   m   A
+5_norm_2hr_m_A         1 18614809    1.0177275    5    norm   2hr   m   A
+1_high_24hr_f_A        1 17506599    0.9129430    1    high  24hr   f   A
+5_high_2hr_m_A         1 22363026    1.0024546    5    high   2hr   m   A
+5_osnorm_2hr_m_A       1 17964465    1.0003134    5  osnorm   2hr   m   A
+5_norm_24hr_m_A        1 18503552    0.9925119    5    norm  24hr   m   A
+5_high_24hr_m_A        1 17375429    0.9947440    5    high  24hr   m   A
+5_osnorm_24hr_m_A      1 18697750    0.9901897    5  osnorm  24hr   m   A
+5_norm_1week_m_A       1 17696809    1.0007564    5    norm 1week   m   A
+5_high_1week_m_A       1 18387625    1.0005862    5    high 1week   m   A
+5_osnorm_1week_m_A     1 16184864    1.0114902    5  osnorm 1week   m   A
+5_low_2hr_m_A          1 17230931    1.0099424    5     low   2hr   m   A
+5_low_24hr_m_A         1 18132180    1.0100082    5     low  24hr   m   A
+1_osnorm_24hr_f_A      1 16286005    0.9290966    1  osnorm  24hr   f   A
+5_low_1week_m_A        1 18359632    1.0127034    5     low 1week   m   A
+6_norm_2hr_f_A         1 17436704    0.9830301    6    norm   2hr   f   A
+6_high_2hr_f_A         1 16688222    0.9953388    6    high   2hr   f   A
+6_osnorm_2hr_f_A       1 16652903    0.9979950    6  osnorm   2hr   f   A
+6_norm_24hr_f_A        1 17335613    1.0184949    6    norm  24hr   f   A
+6_high_24hr_f_A        1 17346195    0.9901657    6    high  24hr   f   A
+6_osnorm_24hr_f_A      1 17652481    1.0196610    6  osnorm  24hr   f   A
+6_norm_1week_f_A       1 20212671    1.0039989    6    norm 1week   f   A
+6_high_1week_f_A       1 20689080    1.0056180    6    high 1week   f   A
+6_osnorm_1week_f_A     1 20417448    1.0014762    6  osnorm 1week   f   A
+1_norm_1week_f_A       1 16139419    0.9446316    1    norm 1week   f   A
+6_low_2hr_f_A          1 19020099    1.0194203    6     low   2hr   f   A
+6_low_24hr_f_A         1 20279089    1.0133007    6     low  24hr   f   A
+6_low_1week_f_A        1 19784016    1.0264167    6     low 1week   f   A
+1_high_1week_f_A       1 15242131    0.9644690    1    high 1week   f   A
+1_osnorm_1week_f_A     1 18761375    0.9509140    1  osnorm 1week   f   A
+                      condition
+1_norm_2hr_f_A         2hr.norm
+1_low_2hr_f_A           2hr.low
+1_low_24hr_f_A         24hr.low
+1_low_1week_f_A       1week.low
+2_norm_2hr_m_A         2hr.norm
+2_high_2hr_m_A         2hr.high
+2_osnorm_2hr_m_A     2hr.osnorm
+2_high_24hr_m_A       24hr.high
+2_osnorm_24hr_m_A   24hr.osnorm
+2_norm_1week_m_A     1week.norm
+1_high_2hr_f_A         2hr.high
+2_high_1week_m_A     1week.high
+2_osnorm_1week_m_A 1week.osnorm
+2_low_2hr_m_A           2hr.low
+2_low_24hr_m_A         24hr.low
+2_low_1week_m_A       1week.low
+3_norm_2hr_f_A         2hr.norm
+3_high_2hr_f_A         2hr.high
+3_osnorm_2hr_f_A     2hr.osnorm
+3_norm_24hr_f_A       24hr.norm
+3_high_24hr_f_A       24hr.high
+1_osnorm_2hr_f_A     2hr.osnorm
+3_osnorm_24hr_f_A   24hr.osnorm
+3_norm_1week_f_A     1week.norm
+3_high_1week_f_A     1week.high
+3_osnorm_1week_f_A 1week.osnorm
+3_low_2hr_f_A           2hr.low
+3_low_24hr_f_A         24hr.low
+3_low_1week_f_A       1week.low
+4_norm_2hr_m_A         2hr.norm
+4_high_2hr_m_A         2hr.high
+4_osnorm_2hr_m_A     2hr.osnorm
+1_norm_24hr_f_A       24hr.norm
+4_norm_24hr_m_A       24hr.norm
+4_high_24hr_m_A       24hr.high
+4_osnorm_24hr_m_A   24hr.osnorm
+4_norm_1week_m_A     1week.norm
+4_high_1week_m_A     1week.high
+4_osnorm_1week_m_A 1week.osnorm
+4_low_2hr_m_A           2hr.low
+4_low_24hr_m_A         24hr.low
+4_low_1week_m_A       1week.low
+5_norm_2hr_m_A         2hr.norm
+1_high_24hr_f_A       24hr.high
+5_high_2hr_m_A         2hr.high
+5_osnorm_2hr_m_A     2hr.osnorm
+5_norm_24hr_m_A       24hr.norm
+5_high_24hr_m_A       24hr.high
+5_osnorm_24hr_m_A   24hr.osnorm
+5_norm_1week_m_A     1week.norm
+5_high_1week_m_A     1week.high
+5_osnorm_1week_m_A 1week.osnorm
+5_low_2hr_m_A           2hr.low
+5_low_24hr_m_A         24hr.low
+1_osnorm_24hr_f_A   24hr.osnorm
+5_low_1week_m_A       1week.low
+6_norm_2hr_f_A         2hr.norm
+6_high_2hr_f_A         2hr.high
+6_osnorm_2hr_f_A     2hr.osnorm
+6_norm_24hr_f_A       24hr.norm
+6_high_24hr_f_A       24hr.high
+6_osnorm_24hr_f_A   24hr.osnorm
+6_norm_1week_f_A     1week.norm
+6_high_1week_f_A     1week.high
+6_osnorm_1week_f_A 1week.osnorm
+1_norm_1week_f_A     1week.norm
+6_low_2hr_f_A           2hr.low
+6_low_24hr_f_A         24hr.low
+6_low_1week_f_A       1week.low
+1_high_1week_f_A     1week.high
+1_osnorm_1week_f_A 1week.osnorm</code></pre>
+<p>making the model matrix</p>
+<pre class="r"><code> mm &lt;- model.matrix(~0 +condition, data=dge$samples)
+colnames(mm) &lt;- levels(dge$samples$condition)
+colnames(mm) &lt;- make.names(colnames(mm))
+mm</code></pre>
+<pre><code>                   X2hr.low X24hr.low X1week.low X2hr.norm X24hr.norm
+1_norm_2hr_f_A            0         0          0         1          0
+1_low_2hr_f_A             1         0          0         0          0
+1_low_24hr_f_A            0         1          0         0          0
+1_low_1week_f_A           0         0          1         0          0
+2_norm_2hr_m_A            0         0          0         1          0
+2_high_2hr_m_A            0         0          0         0          0
+2_osnorm_2hr_m_A          0         0          0         0          0
+2_high_24hr_m_A           0         0          0         0          0
+2_osnorm_24hr_m_A         0         0          0         0          0
+2_norm_1week_m_A          0         0          0         0          0
+1_high_2hr_f_A            0         0          0         0          0
+2_high_1week_m_A          0         0          0         0          0
+2_osnorm_1week_m_A        0         0          0         0          0
+2_low_2hr_m_A             1         0          0         0          0
+2_low_24hr_m_A            0         1          0         0          0
+2_low_1week_m_A           0         0          1         0          0
+3_norm_2hr_f_A            0         0          0         1          0
+3_high_2hr_f_A            0         0          0         0          0
+3_osnorm_2hr_f_A          0         0          0         0          0
+3_norm_24hr_f_A           0         0          0         0          1
+3_high_24hr_f_A           0         0          0         0          0
+1_osnorm_2hr_f_A          0         0          0         0          0
+3_osnorm_24hr_f_A         0         0          0         0          0
+3_norm_1week_f_A          0         0          0         0          0
+3_high_1week_f_A          0         0          0         0          0
+3_osnorm_1week_f_A        0         0          0         0          0
+3_low_2hr_f_A             1         0          0         0          0
+3_low_24hr_f_A            0         1          0         0          0
+3_low_1week_f_A           0         0          1         0          0
+4_norm_2hr_m_A            0         0          0         1          0
+4_high_2hr_m_A            0         0          0         0          0
+4_osnorm_2hr_m_A          0         0          0         0          0
+1_norm_24hr_f_A           0         0          0         0          1
+4_norm_24hr_m_A           0         0          0         0          1
+4_high_24hr_m_A           0         0          0         0          0
+4_osnorm_24hr_m_A         0         0          0         0          0
+4_norm_1week_m_A          0         0          0         0          0
+4_high_1week_m_A          0         0          0         0          0
+4_osnorm_1week_m_A        0         0          0         0          0
+4_low_2hr_m_A             1         0          0         0          0
+4_low_24hr_m_A            0         1          0         0          0
+4_low_1week_m_A           0         0          1         0          0
+5_norm_2hr_m_A            0         0          0         1          0
+1_high_24hr_f_A           0         0          0         0          0
+5_high_2hr_m_A            0         0          0         0          0
+5_osnorm_2hr_m_A          0         0          0         0          0
+5_norm_24hr_m_A           0         0          0         0          1
+5_high_24hr_m_A           0         0          0         0          0
+5_osnorm_24hr_m_A         0         0          0         0          0
+5_norm_1week_m_A          0         0          0         0          0
+5_high_1week_m_A          0         0          0         0          0
+5_osnorm_1week_m_A        0         0          0         0          0
+5_low_2hr_m_A             1         0          0         0          0
+5_low_24hr_m_A            0         1          0         0          0
+1_osnorm_24hr_f_A         0         0          0         0          0
+5_low_1week_m_A           0         0          1         0          0
+6_norm_2hr_f_A            0         0          0         1          0
+6_high_2hr_f_A            0         0          0         0          0
+6_osnorm_2hr_f_A          0         0          0         0          0
+6_norm_24hr_f_A           0         0          0         0          1
+6_high_24hr_f_A           0         0          0         0          0
+6_osnorm_24hr_f_A         0         0          0         0          0
+6_norm_1week_f_A          0         0          0         0          0
+6_high_1week_f_A          0         0          0         0          0
+6_osnorm_1week_f_A        0         0          0         0          0
+1_norm_1week_f_A          0         0          0         0          0
+6_low_2hr_f_A             1         0          0         0          0
+6_low_24hr_f_A            0         1          0         0          0
+6_low_1week_f_A           0         0          1         0          0
+1_high_1week_f_A          0         0          0         0          0
+1_osnorm_1week_f_A        0         0          0         0          0
+                   X1week.norm X2hr.osnorm X24hr.osnorm X1week.osnorm X2hr.high
+1_norm_2hr_f_A               0           0            0             0         0
+1_low_2hr_f_A                0           0            0             0         0
+1_low_24hr_f_A               0           0            0             0         0
+1_low_1week_f_A              0           0            0             0         0
+2_norm_2hr_m_A               0           0            0             0         0
+2_high_2hr_m_A               0           0            0             0         1
+2_osnorm_2hr_m_A             0           1            0             0         0
+2_high_24hr_m_A              0           0            0             0         0
+2_osnorm_24hr_m_A            0           0            1             0         0
+2_norm_1week_m_A             1           0            0             0         0
+1_high_2hr_f_A               0           0            0             0         1
+2_high_1week_m_A             0           0            0             0         0
+2_osnorm_1week_m_A           0           0            0             1         0
+2_low_2hr_m_A                0           0            0             0         0
+2_low_24hr_m_A               0           0            0             0         0
+2_low_1week_m_A              0           0            0             0         0
+3_norm_2hr_f_A               0           0            0             0         0
+3_high_2hr_f_A               0           0            0             0         1
+3_osnorm_2hr_f_A             0           1            0             0         0
+3_norm_24hr_f_A              0           0            0             0         0
+3_high_24hr_f_A              0           0            0             0         0
+1_osnorm_2hr_f_A             0           1            0             0         0
+3_osnorm_24hr_f_A            0           0            1             0         0
+3_norm_1week_f_A             1           0            0             0         0
+3_high_1week_f_A             0           0            0             0         0
+3_osnorm_1week_f_A           0           0            0             1         0
+3_low_2hr_f_A                0           0            0             0         0
+3_low_24hr_f_A               0           0            0             0         0
+3_low_1week_f_A              0           0            0             0         0
+4_norm_2hr_m_A               0           0            0             0         0
+4_high_2hr_m_A               0           0            0             0         1
+4_osnorm_2hr_m_A             0           1            0             0         0
+1_norm_24hr_f_A              0           0            0             0         0
+4_norm_24hr_m_A              0           0            0             0         0
+4_high_24hr_m_A              0           0            0             0         0
+4_osnorm_24hr_m_A            0           0            1             0         0
+4_norm_1week_m_A             1           0            0             0         0
+4_high_1week_m_A             0           0            0             0         0
+4_osnorm_1week_m_A           0           0            0             1         0
+4_low_2hr_m_A                0           0            0             0         0
+4_low_24hr_m_A               0           0            0             0         0
+4_low_1week_m_A              0           0            0             0         0
+5_norm_2hr_m_A               0           0            0             0         0
+1_high_24hr_f_A              0           0            0             0         0
+5_high_2hr_m_A               0           0            0             0         1
+5_osnorm_2hr_m_A             0           1            0             0         0
+5_norm_24hr_m_A              0           0            0             0         0
+5_high_24hr_m_A              0           0            0             0         0
+5_osnorm_24hr_m_A            0           0            1             0         0
+5_norm_1week_m_A             1           0            0             0         0
+5_high_1week_m_A             0           0            0             0         0
+5_osnorm_1week_m_A           0           0            0             1         0
+5_low_2hr_m_A                0           0            0             0         0
+5_low_24hr_m_A               0           0            0             0         0
+1_osnorm_24hr_f_A            0           0            1             0         0
+5_low_1week_m_A              0           0            0             0         0
+6_norm_2hr_f_A               0           0            0             0         0
+6_high_2hr_f_A               0           0            0             0         1
+6_osnorm_2hr_f_A             0           1            0             0         0
+6_norm_24hr_f_A              0           0            0             0         0
+6_high_24hr_f_A              0           0            0             0         0
+6_osnorm_24hr_f_A            0           0            1             0         0
+6_norm_1week_f_A             1           0            0             0         0
+6_high_1week_f_A             0           0            0             0         0
+6_osnorm_1week_f_A           0           0            0             1         0
+1_norm_1week_f_A             1           0            0             0         0
+6_low_2hr_f_A                0           0            0             0         0
+6_low_24hr_f_A               0           0            0             0         0
+6_low_1week_f_A              0           0            0             0         0
+1_high_1week_f_A             0           0            0             0         0
+1_osnorm_1week_f_A           0           0            0             1         0
+                   X24hr.high X1week.high
+1_norm_2hr_f_A              0           0
+1_low_2hr_f_A               0           0
+1_low_24hr_f_A              0           0
+1_low_1week_f_A             0           0
+2_norm_2hr_m_A              0           0
+2_high_2hr_m_A              0           0
+2_osnorm_2hr_m_A            0           0
+2_high_24hr_m_A             1           0
+2_osnorm_24hr_m_A           0           0
+2_norm_1week_m_A            0           0
+1_high_2hr_f_A              0           0
+2_high_1week_m_A            0           1
+2_osnorm_1week_m_A          0           0
+2_low_2hr_m_A               0           0
+2_low_24hr_m_A              0           0
+2_low_1week_m_A             0           0
+3_norm_2hr_f_A              0           0
+3_high_2hr_f_A              0           0
+3_osnorm_2hr_f_A            0           0
+3_norm_24hr_f_A             0           0
+3_high_24hr_f_A             1           0
+1_osnorm_2hr_f_A            0           0
+3_osnorm_24hr_f_A           0           0
+3_norm_1week_f_A            0           0
+3_high_1week_f_A            0           1
+3_osnorm_1week_f_A          0           0
+3_low_2hr_f_A               0           0
+3_low_24hr_f_A              0           0
+3_low_1week_f_A             0           0
+4_norm_2hr_m_A              0           0
+4_high_2hr_m_A              0           0
+4_osnorm_2hr_m_A            0           0
+1_norm_24hr_f_A             0           0
+4_norm_24hr_m_A             0           0
+4_high_24hr_m_A             1           0
+4_osnorm_24hr_m_A           0           0
+4_norm_1week_m_A            0           0
+4_high_1week_m_A            0           1
+4_osnorm_1week_m_A          0           0
+4_low_2hr_m_A               0           0
+4_low_24hr_m_A              0           0
+4_low_1week_m_A             0           0
+5_norm_2hr_m_A              0           0
+1_high_24hr_f_A             1           0
+5_high_2hr_m_A              0           0
+5_osnorm_2hr_m_A            0           0
+5_norm_24hr_m_A             0           0
+5_high_24hr_m_A             1           0
+5_osnorm_24hr_m_A           0           0
+5_norm_1week_m_A            0           0
+5_high_1week_m_A            0           1
+5_osnorm_1week_m_A          0           0
+5_low_2hr_m_A               0           0
+5_low_24hr_m_A              0           0
+1_osnorm_24hr_f_A           0           0
+5_low_1week_m_A             0           0
+6_norm_2hr_f_A              0           0
+6_high_2hr_f_A              0           0
+6_osnorm_2hr_f_A            0           0
+6_norm_24hr_f_A             0           0
+6_high_24hr_f_A             1           0
+6_osnorm_24hr_f_A           0           0
+6_norm_1week_f_A            0           0
+6_high_1week_f_A            0           1
+6_osnorm_1week_f_A          0           0
+1_norm_1week_f_A            0           0
+6_low_2hr_f_A               0           0
+6_low_24hr_f_A              0           0
+6_low_1week_f_A             0           0
+1_high_1week_f_A            0           1
+1_osnorm_1week_f_A          0           0
+attr(,&quot;assign&quot;)
+ [1] 1 1 1 1 1 1 1 1 1 1 1 1
+attr(,&quot;contrasts&quot;)
+attr(,&quot;contrasts&quot;)$condition
+[1] &quot;contr.treatment&quot;</code></pre>
+<p>adding a</p>
+<pre class="r"><code>y &lt;- voom(dge, mm,plot =FALSE)
+
+corfit &lt;- duplicateCorrelation(y, mm, block = dge$samples$indv)
+
+v &lt;- voom(dge, mm, block = dge$samples$indv, correlation = corfit$consensus)
+
+fit &lt;- lmFit(v, mm, block = dge$samples$indv, correlation = corfit$consensus)
+
+cm &lt;- makeContrasts(low_2.norm_2 = `X2hr.low` -`X2hr.norm`,
+                    high_2.norm_2 = `X2hr.high` -`X2hr.norm`,
+                    osnorm_2.norm_2=`X2hr.osnorm` -`X2hr.norm`,
+                    low_24.norm_24 = `X24hr.low` -`X24hr.norm`,
+                    high_24.norm_24=`X24hr.high` -`X24hr.norm`,
+                    osnorm_24.norm_24=`X24hr.osnorm` -`X24hr.norm`,
+                    low_1week.norm_1week = `X1week.low` -`X1week.norm`,
+                    high_1week.norm_1week=`X1week.high` -`X1week.norm`,
+                    osnorm_1week.norm_1week=`X1week.osnorm` -`X1week.norm`,
+                    levels = mm)
+
+fit2&lt;- contrasts.fit(fit, contrasts=cm)
+
+efit2 &lt;- eBayes(fit2)
+
+results = decideTests(efit2)
+
+summary(results)                    </code></pre>
+<pre><code>       low_2.norm_2 high_2.norm_2 osnorm_2.norm_2 low_24.norm_24
+Down            647             0               0            105
+NotSig        13126         13978           13978          13751
+Up              205             0               0            122
+       high_24.norm_24 osnorm_24.norm_24 low_1week.norm_1week
+Down                 0                 0                  389
+NotSig           13978             13978                13181
+Up                   0                 0                  408
+       high_1week.norm_1week osnorm_1week.norm_1week
+Down                       0                       0
+NotSig                 13978                   13978
+Up                         0                       0</code></pre>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.4.2 (2024-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26100)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=English_United States.utf8 
+[2] LC_CTYPE=English_United States.utf8   
+[3] LC_MONETARY=English_United States.utf8
+[4] LC_NUMERIC=C                          
+[5] LC_TIME=English_United States.utf8    
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] grid      stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] ChIPpeakAnno_3.40.0                     
+ [2] data.table_1.17.0                       
+ [3] smplot2_0.2.5                           
+ [4] cowplot_1.1.3                           
+ [5] ComplexHeatmap_2.22.0                   
+ [6] ggrepel_0.9.6                           
+ [7] plyranges_1.26.0                        
+ [8] ggsignif_0.6.4                          
+ [9] eulerr_7.0.2                            
+[10] devtools_2.4.5                          
+[11] usethis_3.1.0                           
+[12] ggpubr_0.6.0                            
+[13] BiocParallel_1.40.0                     
+[14] scales_1.3.0                            
+[15] VennDiagram_1.7.3                       
+[16] futile.logger_1.4.3                     
+[17] gridExtra_2.3                           
+[18] ggfortify_0.4.17                        
+[19] edgeR_4.4.2                             
+[20] limma_3.62.2                            
+[21] rtracklayer_1.66.0                      
+[22] org.Hs.eg.db_3.20.0                     
+[23] TxDb.Hsapiens.UCSC.hg38.knownGene_3.20.0
+[24] GenomicFeatures_1.58.0                  
+[25] AnnotationDbi_1.68.0                    
+[26] Biobase_2.66.0                          
+[27] GenomicRanges_1.58.0                    
+[28] GenomeInfoDb_1.42.3                     
+[29] IRanges_2.40.1                          
+[30] S4Vectors_0.44.0                        
+[31] BiocGenerics_0.52.0                     
+[32] ChIPseeker_1.42.1                       
+[33] RColorBrewer_1.1-3                      
+[34] broom_1.0.7                             
+[35] kableExtra_1.4.0                        
+[36] lubridate_1.9.4                         
+[37] forcats_1.0.0                           
+[38] stringr_1.5.1                           
+[39] dplyr_1.1.4                             
+[40] purrr_1.0.4                             
+[41] readr_2.1.5                             
+[42] tidyr_1.3.1                             
+[43] tibble_3.2.1                            
+[44] ggplot2_3.5.1                           
+[45] tidyverse_2.0.0                         
+[46] workflowr_1.7.1                         
+
+loaded via a namespace (and not attached):
+  [1] ProtGenerics_1.38.0                    
+  [2] fs_1.6.5                               
+  [3] matrixStats_1.5.0                      
+  [4] bitops_1.0-9                           
+  [5] enrichplot_1.26.6                      
+  [6] httr_1.4.7                             
+  [7] doParallel_1.0.17                      
+  [8] InteractionSet_1.34.0                  
+  [9] profvis_0.4.0                          
+ [10] tools_4.4.2                            
+ [11] backports_1.5.0                        
+ [12] R6_2.6.1                               
+ [13] lazyeval_0.2.2                         
+ [14] GetoptLong_1.0.5                       
+ [15] urlchecker_1.0.1                       
+ [16] withr_3.0.2                            
+ [17] prettyunits_1.2.0                      
+ [18] cli_3.6.4                              
+ [19] formatR_1.14                           
+ [20] Cairo_1.6-2                            
+ [21] labeling_0.4.3                         
+ [22] sass_0.4.9                             
+ [23] Rsamtools_2.22.0                       
+ [24] systemfonts_1.2.1                      
+ [25] yulab.utils_0.2.0                      
+ [26] foreign_0.8-88                         
+ [27] DOSE_4.0.0                             
+ [28] svglite_2.1.3                          
+ [29] R.utils_2.13.0                         
+ [30] sessioninfo_1.2.3                      
+ [31] plotrix_3.8-4                          
+ [32] BSgenome_1.74.0                        
+ [33] pwr_1.3-0                              
+ [34] rstudioapi_0.17.1                      
+ [35] RSQLite_2.3.9                          
+ [36] shape_1.4.6.1                          
+ [37] generics_0.1.3                         
+ [38] gridGraphics_0.5-1                     
+ [39] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
+ [40] BiocIO_1.16.0                          
+ [41] vroom_1.6.5                            
+ [42] gtools_3.9.5                           
+ [43] car_3.1-3                              
+ [44] GO.db_3.20.0                           
+ [45] Matrix_1.7-3                           
+ [46] abind_1.4-8                            
+ [47] R.methodsS3_1.8.2                      
+ [48] lifecycle_1.0.4                        
+ [49] whisker_0.4.1                          
+ [50] yaml_2.3.10                            
+ [51] carData_3.0-5                          
+ [52] SummarizedExperiment_1.36.0            
+ [53] BiocFileCache_2.14.0                   
+ [54] gplots_3.2.0                           
+ [55] qvalue_2.38.0                          
+ [56] SparseArray_1.6.2                      
+ [57] blob_1.2.4                             
+ [58] promises_1.3.2                         
+ [59] pwalign_1.2.0                          
+ [60] crayon_1.5.3                           
+ [61] miniUI_0.1.1.1                         
+ [62] ggtangle_0.0.6                         
+ [63] lattice_0.22-6                         
+ [64] KEGGREST_1.46.0                        
+ [65] magick_2.8.5                           
+ [66] pillar_1.10.1                          
+ [67] knitr_1.49                             
+ [68] fgsea_1.32.2                           
+ [69] rjson_0.2.23                           
+ [70] boot_1.3-31                            
+ [71] codetools_0.2-20                       
+ [72] fastmatch_1.1-6                        
+ [73] glue_1.8.0                             
+ [74] getPass_0.2-4                          
+ [75] ggfun_0.1.8                            
+ [76] remotes_2.5.0                          
+ [77] vctrs_0.6.5                            
+ [78] png_0.1-8                              
+ [79] treeio_1.30.0                          
+ [80] gtable_0.3.6                           
+ [81] cachem_1.1.0                           
+ [82] xfun_0.51                              
+ [83] S4Arrays_1.6.0                         
+ [84] mime_0.12                              
+ [85] survival_3.8-3                         
+ [86] iterators_1.0.14                       
+ [87] statmod_1.5.0                          
+ [88] ellipsis_0.3.2                         
+ [89] nlme_3.1-167                           
+ [90] ggtree_3.14.0                          
+ [91] bit64_4.6.0-1                          
+ [92] filelock_1.0.3                         
+ [93] progress_1.2.3                         
+ [94] rprojroot_2.0.4                        
+ [95] bslib_0.9.0                            
+ [96] rpart_4.1.24                           
+ [97] KernSmooth_2.23-26                     
+ [98] Hmisc_5.2-2                            
+ [99] colorspace_2.1-1                       
+[100] DBI_1.2.3                              
+[101] nnet_7.3-20                            
+[102] tidyselect_1.2.1                       
+[103] processx_3.8.6                         
+[104] bit_4.6.0                              
+[105] compiler_4.4.2                         
+[106] curl_6.2.1                             
+[107] git2r_0.35.0                           
+[108] httr2_1.1.1                            
+[109] graph_1.84.1                           
+[110] htmlTable_2.4.3                        
+[111] xml2_1.3.7                             
+[112] DelayedArray_0.32.0                    
+[113] checkmate_2.3.2                        
+[114] caTools_1.18.3                         
+[115] RBGL_1.82.0                            
+[116] callr_3.7.6                            
+[117] rappdirs_0.3.3                         
+[118] digest_0.6.37                          
+[119] rmarkdown_2.29                         
+[120] XVector_0.46.0                         
+[121] base64enc_0.1-3                        
+[122] htmltools_0.5.8.1                      
+[123] pkgconfig_2.0.3                        
+[124] MatrixGenerics_1.18.1                  
+[125] regioneR_1.38.0                        
+[126] ensembldb_2.30.0                       
+[127] dbplyr_2.5.0                           
+[128] fastmap_1.2.0                          
+[129] GlobalOptions_0.1.2                    
+[130] rlang_1.1.5                            
+[131] htmlwidgets_1.6.4                      
+[132] UCSC.utils_1.2.0                       
+[133] shiny_1.10.0                           
+[134] farver_2.1.2                           
+[135] jquerylib_0.1.4                        
+[136] zoo_1.8-13                             
+[137] jsonlite_1.9.1                         
+[138] GOSemSim_2.32.0                        
+[139] R.oo_1.27.0                            
+[140] RCurl_1.98-1.16                        
+[141] magrittr_2.0.3                         
+[142] Formula_1.2-5                          
+[143] GenomeInfoDbData_1.2.13                
+[144] ggplotify_0.1.2                        
+[145] patchwork_1.3.0                        
+[146] munsell_0.5.1                          
+[147] Rcpp_1.0.14                            
+[148] ape_5.8-1                              
+[149] stringi_1.8.4                          
+[150] MASS_7.3-65                            
+[151] zlibbioc_1.52.0                        
+[152] plyr_1.8.9                             
+[153] pkgbuild_1.4.6                         
+[154] parallel_4.4.2                         
+[155] Biostrings_2.74.1                      
+[156] splines_4.4.2                          
+[157] multtest_2.62.0                        
+[158] circlize_0.4.16                        
+[159] hms_1.1.3                              
+[160] locfit_1.5-9.12                        
+[161] ps_1.9.0                               
+[162] igraph_2.1.4                           
+[163] biomaRt_2.62.1                         
+[164] reshape2_1.4.4                         
+[165] pkgload_1.4.0                          
+[166] futile.options_1.0.1                   
+[167] XML_3.99-0.18                          
+[168] evaluate_1.0.3                         
+[169] universalmotif_1.24.2                  
+[170] lambda.r_1.2.4                         
+[171] tzdb_0.4.0                             
+[172] foreach_1.5.2                          
+[173] httpuv_1.6.15                          
+[174] clue_0.3-66                            
+[175] xtable_1.8-4                           
+[176] AnnotationFilter_1.30.0                
+[177] restfulr_0.0.15                        
+[178] tidytree_0.4.6                         
+[179] rstatix_0.7.2                          
+[180] later_1.4.1                            
+[181] viridisLite_0.4.2                      
+[182] aplot_0.2.5                            
+[183] memoise_2.0.1                          
+[184] GenomicAlignments_1.42.0               
+[185] cluster_2.1.8.1                        
+[186] timechange_0.3.0                       </code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
