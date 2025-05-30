@@ -8,8 +8,10 @@ editor_options:
   chunk_output_type: console
 ---
 
-Hello!  I am working on understanding the effects of Glucose on Cardiomyocytes. The cell work was performed and collected by Omar Johnson.   
+Hello!  I am working on understanding the effects of Glucose on iPSC-derived cardiomyocytes. The cell work was performed and collected by Omar Johnson.   
 
 [Initial QC of fastq files](https://reneeisnowhere.github.io/Glucose_project/Fastqc_initial.html)
 
 [Looking at Counts using PCA](https://reneeisnowhere.github.io/Glucose_project/Counts_matrix.html)
+
+[Differential gene expression with individual 1A](https://reneeisnowhere.github.io/Glucose_project/Diff_expression.html)
