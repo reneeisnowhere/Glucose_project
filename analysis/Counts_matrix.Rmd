@@ -298,6 +298,27 @@ plot_versus_pc <- function(df, pc_num, fac) {
   }
 }
 
+plot_versus_pc1 <- function(df, pc_num, fac, rotate_x = FALSE) {
+  pc_char <- paste0("PC", pc_num)
+  pval <- get_regr_pval(lm(df[[pc_char]] ~ df[[fac]]))
+  
+  rotate_labels <- theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+  if (is.numeric(df[[fac]])) {
+    p <- ggplot(df, aes_string(x = fac, y = pc_char)) +
+      geom_point() +
+      geom_smooth(method = "lm") +
+      labs(title = sprintf("p-val: %.2f", pval)) +
+      rotate_labels
+  } else {
+    p <- ggplot(df, aes_string(x = fac, y = pc_char)) +
+      geom_boxplot() +
+      labs(title = sprintf("p-val: %.2f", pval)) +
+      rotate_labels
+  }
+
+  return(p)
+}
 
 ```
 
@@ -311,30 +332,31 @@ df_anno_mat <- anno_raw_counts %>%
          glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
          time=factor(time, levels = c("2hr" ,"24hr", "1week")),
          sex=factor(sex, levels=c("f","m")),
-         rep=factor(rep, levels=c("A","B")))
+         rep=factor(rep, levels=c("A","B")),
+         condition=interaction(time,glucose))
 pca_lcpm_filt <- prcomp(t(lcpm_filt_counts), scale. = TRUE)
 pca_filt_anno <- data.frame(df_anno_mat, pca_lcpm_filt$x)
 plotting_var_names <- prop_var_percent(pca_lcpm_filt)
 
 pca_filt_anno %>% 
-ggplot(.,aes(x = PC1, y = PC2, col=glucose, shape=time, group=rep))+
+ggplot(.,aes(x = PC1, y = PC2, col=condition, shape=time, group=rep))+
   geom_point(size= 3)+
    ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
    ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
   theme_bw()+
-  guides(size =4)+
+  guides(size =3)+
   labs(y = paste0("PC 2 (",round(plotting_var_names[2],2),"%)")
        , x =paste0("PC 1 (",round(plotting_var_names[1],2),"%)"))+
   theme(plot.title=element_text(size= 14,hjust = 0.5),
         axis.title = element_text(size = 12, color = "black"))
 
 pca_filt_anno %>% 
-ggplot(.,aes(x = PC3, y = PC4, col=glucose, shape=time, group=glucose))+
+ggplot(.,aes(x = PC3, y = PC4, col=condition, shape=time, group=glucose))+
   geom_point(size= 3)+
    ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
    ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
   theme_bw()+
-  guides( size =4)+
+  guides( size =3)+
   labs(y = paste0("PC 4 (",round(plotting_var_names[4],2),"%)")
        , x =paste0("PC 3 (",round(plotting_var_names[3],2),"%)"))+
   theme(plot.title=element_text(size= 14,hjust = 0.5),
@@ -342,12 +364,12 @@ ggplot(.,aes(x = PC3, y = PC4, col=glucose, shape=time, group=glucose))+
 
 
 pca_filt_anno %>% 
-ggplot(.,aes(x = PC2, y = PC3, col=glucose, shape=time, group=glucose))+
+ggplot(.,aes(x = PC2, y = PC3, col=condition, shape=time, group=glucose))+
   geom_point(size= 3)+
    ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
    ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
   theme_bw()+
-  guides( size =4)+
+  guides( size =3)+
   labs(y = paste0("PC 3 (",round(plotting_var_names[3],2),"%)")
        , x =paste0("PC 2 (",round(plotting_var_names[2],2),"%)"))+
   theme(plot.title=element_text(size= 14,hjust = 0.5),
@@ -356,9 +378,9 @@ ggplot(.,aes(x = PC2, y = PC3, col=glucose, shape=time, group=glucose))+
 
 ### Contribution to variance
 
-```{r variance by type}
-facs <- c("indv", "glucose", "time", "sex")
-names(facs) <- c("Individual", "Glucose level", "Time", "Sex")
+```{r variance by type, fig.height=8}
+facs <- c("indv", "glucose", "time", "sex","condition")
+names(facs) <- c("Individual", "Glucose level", "Time", "Sex", "Condition(time_glucose-level)")
 
 for (f in facs) {
   # PC1 v PC2
@@ -367,13 +389,93 @@ for (f in facs) {
   # print(last_plot())
   
   # Plot f versus PC1 and PC2
-  f_v_pc1 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 1, f))
-  f_v_pc2 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 2, f))
-  f_v_pc3 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 3, f))
-  f_v_pc4 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 4, f))
-  f_v_pc5 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 5, f))
+  
+  f_v_pc1 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 1, f))
+  f_v_pc2 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 2, f))
+  f_v_pc3 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 3, f))
+  f_v_pc4 <- gridExtra::arrangeGrob(plot_versus_pc1(pca_filt_anno, 4, f))
+  f_v_pc5 <- gridExtra::arrangeGrob(
+  plot_versus_pc1(pca_filt_anno, 5, f) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+)
   gridExtra::grid.arrange(f_v_pc1, f_v_pc2, f_v_pc3,f_v_pc4, f_v_pc5, ncol = 3, nrow=2, top = names(facs)[which(facs == f)])
 }
 
+```
+
+#### Removing 2A
+
+Due to the results from above, the outlier labelled 2a, is individual 2 (84-1), glucose 5mM (normal glucose) at 24 hours  (MCW_OJ_JT_R_16).  I will remove this sample then recalculate filtered genes and log~2~cpm
+
+```{r remove outlier 1}
+alt_raw_counts <- raw_counts %>%
+  as.data.frame() %>% 
+  dplyr::select(-MCW_OJ_JT_R_16) %>% 
+  as.matrix()
+
+alt_lcpm <- cpm(alt_raw_counts, log= TRUE)
+  ### for determining the basic cutoffs
+alt_filt_raw_counts <- alt_raw_counts[rowMeans(alt_lcpm)> 0,]
+dim(alt_filt_raw_counts)
+
+```
+
+
+```{r rename columns alt}
+## adding in renamed filt_raw_counts columns:
+rename_vec <- setNames(new_names$new_name, new_names$Core_ID)
+existing_cols <- intersect(new_names$Core_ID, colnames(alt_filt_raw_counts))
+alt_filt_raw_counts <- alt_filt_raw_counts %>% 
+  as.data.frame() %>% 
+  rename_with(~ rename_vec[.x], .cols = all_of(existing_cols)) %>% 
+  as.matrix()
+```
+
+
+#### PCA without #16
+
+```{r remove outlier 2, fig.height=6}
+
+alt_anno_raw_counts <- data.frame(timeset = colnames(alt_filt_raw_counts))
+
+alt_lcpm_filt_counts <- alt_filt_raw_counts %>% 
+  cpm(.,log = TRUE)
+
+alt_df_anno_mat <- alt_anno_raw_counts %>%
+  separate(timeset, into = c("indv","glucose","time","sex","rep"), sep= "_") %>%
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")),
+         condition=interaction(time,glucose))
+alt_pca_lcpm_filt <- prcomp(t(alt_lcpm_filt_counts), scale. = TRUE)
+alt_pca_filt_anno <- data.frame(alt_df_anno_mat, alt_pca_lcpm_filt$x)
+alt_plotting_var_names <- prop_var_percent(alt_pca_lcpm_filt)
+
+alt_pca_filt_anno %>% 
+ggplot(.,aes(x = PC1, y = PC2, col=condition, shape=time, group=rep))+
+  geom_point(size= 4)+
+   ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides(size =4)+
+  labs(y = paste0("PC 2 (",round(alt_plotting_var_names[2],2),"%)")
+       , x =paste0("PC 1 (",round(alt_plotting_var_names[1],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
+
+
+alt_pca_filt_anno %>% 
+ggplot(.,aes(x = PC3, y = PC4, col=condition, shape=time, group=rep))+
+  geom_point(size= 4)+
+   ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides(size =4)+
+  labs(y = paste0("PC 4 (",round(alt_plotting_var_names[4],2),"%)")
+       , x =paste0("PC 3 (",round(alt_plotting_var_names[3],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
 ```
 
