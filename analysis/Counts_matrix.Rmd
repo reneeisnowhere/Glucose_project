@@ -1,0 +1,379 @@
+---
+title: "Glucose_counts_matrix"
+author: "Renee Matthews"
+date: "2025-05-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+			dev = c("png","pdf")
+	
+)
+```
+
+```{css, echo=FALSE}
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+pre[class] {
+  max-height: 200px;
+}
+```
+
+```{r package loading}
+library(tidyverse)
+library(readr)
+library(kableExtra)
+library(DT)
+library(readr)
+library(edgeR)
+library(ComplexHeatmap)
+library(data.table)
+library(genomation)
+library(GenomicRanges)
+library(readxl)
+library(stringr)
+library(org.Hs.eg.db)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(RColorBrewer)
+library(ggpubr)
+```
+Data loading
+```{r code for count matrix, eval=FALSE}
+count_files <- list.files("C:/Users/renee/Other_projects_data/Glucose_files/counts_files", pattern = "\\.counts\\.txt$", full.names = TRUE)
+
+counts_list <- lapply(count_files, function(file) {
+   df <- read.delim(file, header = TRUE)
+  
+  # Rename "X" column to Geneid
+  colnames(df)[1] <- "Geneid"
+  
+  # Rename second column to a sample name (based on file name, not bam name)
+  sample_name <- tools::file_path_sans_ext(basename(file))
+  colnames(df)[2] <- sample_name
+  
+  # Keep only Geneid and the count column
+  df <- df[, c("Geneid", sample_name)]
+  
+  return(df)
+})
+
+merged_counts <- Reduce(function(x, y) full_join(x, y, by = "Geneid"), counts_list)
+merged_counts %>%
+  rename_with(~ str_remove(., "_R1\\.counts$"),
+              .cols = -Geneid) %>% 
+  write_tsv(.,"data/Annotation_data/Full_counts_table.tsv")
+  
+
+```
+```{r functions to use}
+prop_var_percent <- function(pca_result){ 
+  # Ensure the input is a PCA result object
+  if (!inherits(pca_result, "prcomp")) {
+    stop("Input must be a result from prcomp()")
+  }
+  
+  # Get the standard deviations from the PCA result
+  sdev <- pca_result$sdev
+  
+  # Calculate the proportion of variance
+  proportion_variance <- (sdev^2) / sum(sdev^2)*100
+  
+  return(proportion_variance)
+}
+```
+
+```{r data loading}
+sample_info_concat <- read_tsv("data/Annotation_data/organized_sample_info.tsv")
+Counts_table <- read_tsv("data/Annotation_data/Full_counts_table.tsv") 
+
+raw_counts <- Counts_table %>% 
+  column_to_rownames("Geneid") %>% 
+  as.matrix()
+new_names <-
+sample_info_concat %>% 
+  mutate(new_trt= case_when(`Conc(mM)`=="0"~ "low",
+                            `Conc(mM)`=="5"~ "norm",
+                            `Conc(mM)`=="5+25" ~"osnorm",
+                            `Conc(mM)`=="30"~ "high")) %>% 
+  mutate(sex=case_when(Line=="75-1"~ "f",
+                       Line=="87-1"~ "f",
+                       Line=="78-1" ~"f",
+                       Line=="17-3"~ "m",
+                       Line=="84-1"~"m",
+                       Line=="90-1"~"m")) %>% 
+  mutate(new_name=paste0(Individual,"_",new_trt,"_",Time,"_",sex,"_",Replicate)) 
+
+mapped <- select(org.Hs.eg.db,
+                 keys = row.names(raw_counts),
+                 columns = c("SYMBOL"),
+                 keytype = "ENTREZID")
+
+mapped_unique_symbolref <- mapped %>%
+  as.data.frame() %>% 
+  group_by(ENTREZID) %>%
+  dplyr::slice(1) %>%
+  ungroup()
+
+```
+
+### Initial eval of matrix
+
+```{r hist unfilt, fig.width=10}
+par(mfrow = c(1, 2))  # Set layout: 1 row, 2 columns
+hist(raw_counts, main= "Raw counts across samples",
+     xlab = "Raw counts",
+     col=4)
+hist(cpm(raw_counts, log=TRUE), 
+     main = expression("Histogram of Log"[2]*" cpm unfiltered"),
+     xlab = expression("Log"[2]*" counts-per-million"),
+     col=4)
+par(mfrow = c(1, 1))  # Reset layout to default after
+
+boxplot(cpm(raw_counts, log=TRUE),
+        main=expression("Boxplot of Log"[2]*" counts-per-million"),
+                        col=4,
+        names=colnames(raw_counts),
+        las=2, cex.axis=.5)
+
+
+```
+The raw count matrix has `r length(Counts_table$Geneid)` genes in ENTREZID or NCBI_gene format.
+
+```{r filtering low counts out}
+
+lcpm <- cpm(raw_counts, log= TRUE)
+  ### for determining the basic cutoffs
+filt_raw_counts <- raw_counts[rowMeans(lcpm)> 0,]
+dim(filt_raw_counts)
+#tail(rownames(filt_raw_counts),n=10)
+filt_raw_counts_1 <- raw_counts[rowMeans(lcpm)> 1,]
+filt_raw_counts_0.5 <- raw_counts[rowMeans(lcpm)> 0.5,]
+```
+Filtering using row_means of the log2cpm >0 yields `r dim(filt_raw_counts)`, genes for all columns. If I had used rowMeans >0.5, I would have had `r dim(filt_raw_counts_0.5)` genes.  If I had used rowMeans >1, I would have `r dim(filt_raw_counts_1)` genes. 
+```{r hist filt, fig.width=10}
+par(mfrow = c(1, 2))  # Set layout: 1 row, 2 columns
+hist(filt_raw_counts, main= "Raw counts across samples",
+     xlab = "Raw counts",
+     col=6)
+hist(cpm(filt_raw_counts, log=TRUE), 
+     main = expression("Histogram of Log"[2]*" cpm filtered rowMeans>0"),
+     xlab = expression("Log"[2]*" counts-per-million"),
+     col=6)
+par(mfrow = c(1, 1))  # Reset layout to default after
+
+boxplot(cpm(filt_raw_counts, log=TRUE),
+        main=expression("Boxplot of Log"[2]*" counts-per-million of filtered set"),
+                        col=6,
+        names=colnames(raw_counts),
+        las=2, cex.axis=.5)
+
+
+par(mfrow = c(1, 2))  # Set layout: 1 row, 2 columns
+hist(cpm(filt_raw_counts_0.5, log=TRUE), 
+     main = expression("Histogram of Log"[2]*" cpm filtered rowMeans>0.5"),
+     xlab = expression("Log"[2]*" counts-per-million"),
+     col=3)
+hist(cpm(filt_raw_counts, log=TRUE), 
+     main = expression("Histogram of Log"[2]*" cpm filtered rowMeans >1"),
+     xlab = expression("Log"[2]*" counts-per-million"),
+     col=7)
+par(mfrow = c(1, 1))  # Reset layout to default after
+
+```
+
+The distribution of log2cpm is fairly standard across all filtering steps, so I am going with the less stringent filtering of rowMeans > 0.
+
+### Heatmap of log~2~cpm filtered genes
+
+```{r rename columns}
+## adding in renamed filt_raw_counts columns:
+rename_vec <- setNames(new_names$new_name, new_names$Core_ID)
+filt_raw_counts <- filt_raw_counts %>% 
+  as.data.frame() %>% 
+  rename_with(~ rename_vec[.x], .cols = all_of(new_names$Core_ID)) %>% 
+  as.matrix()
+```
+
+
+```{r filtered heatmap, fig.height=14, fig.width=16}
+cor_lcpm_counts_pearson <- filt_raw_counts %>% 
+  cpm(., log = TRUE) %>% 
+  cor(.,method = "pearson")
+
+cor_lcpm_counts_spearman <- filt_raw_counts %>% 
+  cpm(., log = TRUE) %>% 
+  cor(.,method = "spearman")
+
+
+anno_raw_counts <- data.frame(timeset = colnames(filt_raw_counts))
+
+counts_corr_mat <-
+anno_raw_counts %>%
+  separate(timeset, into = c("indv","glucose","time","sex","rep"), sep= "_") %>% 
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")))
+
+###pulling color palette:
+cb_palette <- brewer.pal(6, "Set1") 
+dr_palette <- brewer.pal(4,"Dark2")
+
+     
+ mat_colors <- list(
+   indv= cb_palette,
+   glucose=dr_palette,
+   time=c("blue1","purple4","red4"),
+   sex=c("purple", "orange"),
+   rep=c("grey","grey2"))
+
+names(mat_colors$indv)   <- unique(counts_corr_mat$indv)
+names(mat_colors$time) <- unique(counts_corr_mat$time)
+names(mat_colors$glucose) <- unique(counts_corr_mat$glucose)
+names(mat_colors$sex) <- unique(counts_corr_mat$sex)
+names(mat_colors$rep) <- unique(counts_corr_mat$rep)
+
+
+htanno_full_pearson <-  ComplexHeatmap::HeatmapAnnotation(df = counts_corr_mat, col = mat_colors)
+Heatmap(cor_lcpm_counts_pearson, 
+        column_title="Filtered log2cpm pearson correlation",
+        top_annotation = htanno_full_pearson
+        )
+
+htanno_full_spearman <-  ComplexHeatmap::HeatmapAnnotation(df = counts_corr_mat, col = mat_colors)
+Heatmap(cor_lcpm_counts_spearman, 
+        top_annotation = htanno_full_spearman,
+        column_title="Filtered log2cpm spearman correlation")
+
+```
+
+### PCA analysis
+
+```{r PCA functions prelim}
+prop_var_percent <- function(pca_result){ 
+  # Ensure the input is a PCA result object
+  if (!inherits(pca_result, "prcomp")) {
+    stop("Input must be a result from prcomp()")
+  }
+  
+  # Get the standard deviations from the PCA result
+  sdev <- pca_result$sdev
+  
+  # Calculate the proportion of variance
+  proportion_variance <- (sdev^2) / sum(sdev^2)*100
+  
+  return(proportion_variance)
+}
+
+get_regr_pval <- function(mod) {
+  # Returns the p-value for the Fstatistic of a linear model
+  # mod: class lm
+  stopifnot(class(mod) == "lm")
+  fstat <- summary(mod)$fstatistic
+  pval <- 1 - pf(fstat[1], fstat[2], fstat[3])
+  return(pval)
+}
+
+plot_versus_pc <- function(df, pc_num, fac) {
+  # df: data.frame
+  # pc_num: numeric, specific PC for plotting
+  # fac: column name of df for plotting against PC
+  pc_char <- paste0("PC", pc_num)
+  # Calculate F-statistic p-value for linear model
+  pval <- get_regr_pval(lm(df[, pc_char] ~ df[, fac]))
+  if (is.numeric(df[, f])) {
+    ggplot(df, aes_string(x = f, y = pc_char)) + geom_point() +
+      geom_smooth(method = "lm") + labs(title = sprintf("p-val: %.2f", pval))
+  } else {
+    ggplot(df, aes_string(x = f, y = pc_char)) + geom_boxplot() +
+      labs(title = sprintf("p-val: %.2f", pval))
+  }
+}
+
+
+```
+
+```{r pca plots}
+lcpm_filt_counts <- filt_raw_counts %>% 
+  cpm(.,log = TRUE)
+ 
+df_anno_mat <- anno_raw_counts %>%
+  separate(timeset, into = c("indv","glucose","time","sex","rep"), sep= "_") %>%
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")))
+pca_lcpm_filt <- prcomp(t(lcpm_filt_counts), scale. = TRUE)
+pca_filt_anno <- data.frame(df_anno_mat, pca_lcpm_filt$x)
+plotting_var_names <- prop_var_percent(pca_lcpm_filt)
+
+pca_filt_anno %>% 
+ggplot(.,aes(x = PC1, y = PC2, col=glucose, shape=time, group=rep))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides(size =4)+
+  labs(y = paste0("PC 2 (",round(plotting_var_names[2],2),"%)")
+       , x =paste0("PC 1 (",round(plotting_var_names[1],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
+
+pca_filt_anno %>% 
+ggplot(.,aes(x = PC3, y = PC4, col=glucose, shape=time, group=glucose))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides( size =4)+
+  labs(y = paste0("PC 4 (",round(plotting_var_names[4],2),"%)")
+       , x =paste0("PC 3 (",round(plotting_var_names[3],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
+
+
+pca_filt_anno %>% 
+ggplot(.,aes(x = PC2, y = PC3, col=glucose, shape=time, group=glucose))+
+  geom_point(size= 3)+
+   ggrepel::geom_text_repel(aes(label = interaction(indv,rep)))+
+   ggtitle(expression("PCA of log"[2]*"(cpm) filtered peak set"))+
+  theme_bw()+
+  guides( size =4)+
+  labs(y = paste0("PC 3 (",round(plotting_var_names[3],2),"%)")
+       , x =paste0("PC 2 (",round(plotting_var_names[2],2),"%)"))+
+  theme(plot.title=element_text(size= 14,hjust = 0.5),
+        axis.title = element_text(size = 12, color = "black"))
+```
+
+### Contribution to variance
+
+```{r variance by type}
+facs <- c("indv", "glucose", "time", "sex")
+names(facs) <- c("Individual", "Glucose level", "Time", "Sex")
+
+for (f in facs) {
+  # PC1 v PC2
+  # pca_plot(pca_final_four_anno, col_var = f, shape_var = time,
+  #          title = names(facs)[which(facs == f)])
+  # print(last_plot())
+  
+  # Plot f versus PC1 and PC2
+  f_v_pc1 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 1, f))
+  f_v_pc2 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 2, f))
+  f_v_pc3 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 3, f))
+  f_v_pc4 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 4, f))
+  f_v_pc5 <- gridExtra::arrangeGrob(plot_versus_pc(pca_filt_anno, 5, f))
+  gridExtra::grid.arrange(f_v_pc1, f_v_pc2, f_v_pc3,f_v_pc4, f_v_pc5, ncol = 3, nrow=2, top = names(facs)[which(facs == f)])
+}
+
+```
+
