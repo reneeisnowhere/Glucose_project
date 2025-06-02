@@ -29,7 +29,7 @@ library(tidyverse)
 library(kableExtra)
 library(broom)
 library(RColorBrewer)
-library(ChIPseeker)
+# library(ChIPseeker)
 library("TxDb.Hsapiens.UCSC.hg38.knownGene")
 library("org.Hs.eg.db")
 library(rtracklayer)
@@ -52,7 +52,8 @@ library(ComplexHeatmap)
 library(cowplot)
 library(smplot2)
 library(data.table)
-library(ChIPpeakAnno)
+library(DT)
+# library(ChIPpeakAnno)
 
 ```
 
@@ -95,7 +96,18 @@ filter_out_sample_list <-new_names %>%
   dplyr::filter(Core_ID!= "MCW_OJ_JT_R_16") %>% 
   dplyr::filter(Replicate != "B")
 
-
+filter_out_sample_list %>% 
+  datatable(., caption = htmltools::tags$caption(
+            style = 'caption-side: top; text-align: left; font-size: 18px; font-weight: bold;',
+            'List of all samples used for this project'
+          ),
+            options = list(scrollX = TRUE,
+                              scrollY = "500px",
+                              scrollCollapse = TRUE,
+                              fixedColumns= list(leftColumns = 2),
+                              fixedHeader = TRUE),
+            extensions = c("FixedColumns","Scroller"),
+            class = "display")
 
 ```
 
@@ -301,7 +313,8 @@ for (f in facs) {
 }
 
 ```
-### DEG analysis
+### DEG analysis  
+
 ```{r dgemaking}
 dge <- DGEList(counts=subset_filt_raw_counts)
 stopifnot(all(colnames(subset_filt_raw_counts) == rownames(df_anno_mat)))
@@ -336,6 +349,9 @@ cm <- makeContrasts(low_2.norm_2 = `X2hr.low` -`X2hr.norm`,
                     low_1week.norm_1week = `X1week.low` -`X1week.norm`,
                     high_1week.norm_1week=`X1week.high` -`X1week.norm`,
                     osnorm_1week.norm_1week=`X1week.osnorm` -`X1week.norm`,
+                    low_2.osnorm_2 = X2hr.low - X2hr.osnorm,
+                    low_24.osnorm_24 = X24hr.low - X24hr.osnorm,
+                    low_1week.osnorm_1week = X1week.low - X1week.osnorm,
                     levels = mm)
 
 fit2<- contrasts.fit(fit, contrasts=cm)
@@ -347,4 +363,60 @@ results = decideTests(efit2)
 summary(results)                    
 
 ```
+### Volcano plot fun  
+
+```{r making the top tables}
+
+top_tables <- lapply(colnames(cm), function(contrast_name) {
+  topTable(efit2, coef = contrast_name, number = Inf, sort.by = "P")
+})
+names(top_tables) <- colnames(cm)
+
+# Code to combine all of them into the long format:
+# top_df <- map2_dfr(top_tables, names(top_tables), ~ mutate(.x, contrast = .y), .id = "contrast_id")
+
+```
+
+volcano function:
+```{r}
+
+volcanosig <- function(df, psig.lvl = 0.05, title = NULL) {
+  df <- df %>%
+    mutate(threshold = ifelse(adj.P.Val > psig.lvl, "A",
+                              ifelse(adj.P.Val <= psig.lvl & logFC <= 0, "B", "C")))
+  
+  ggplot(df, aes(x = logFC, y = -log10(P.Value))) + 
+    ggrastr::geom_point_rast(aes(color = threshold)) +
+    xlab(expression("Log"[2]*" FC")) +
+    ylab(expression("-log"[10]*"P Value")) +
+    scale_color_manual(values = c("black", "red", "blue")) +
+    theme_cowplot() +
+    ylim(0, 15) +
+    xlim(-5, 5) +
+    ggtitle(title) +
+    theme(legend.position = "none",
+          plot.title = element_text(size = rel(1), hjust = 0.5),
+          axis.title = element_text(size = rel(0.8))) 
+}
+```
+```{r apply volcanosig to elements, fig.width=8, fig.height=4}
+# Create a list of volcano plots
+volcano_plots <- imap(top_tables, ~ volcanosig(.x, psig.lvl = 0.05, title = .y))
+
+low_v_norm <- volcano_plots[c("low_2.norm_2","low_24.norm_24","low_1week.norm_1week")]
+plot_grid(plotlist=low_v_norm , rel_widths =c(1,1,1), nrow = 1)
+
+osnorm_v_norm <- volcano_plots[c("osnorm_2.norm_2","osnorm_24.norm_24","osnorm_1week.norm_1week")]
+plot_grid(plotlist=osnorm_v_norm , rel_widths =c(1,1,1), nrow = 1)
+
+high_v_norm <- volcano_plots[c("high_2.norm_2","high_24.norm_24","high_1week.norm_1week")]
+plot_grid(plotlist=high_v_norm , rel_widths =c(1,1,1), nrow = 1)
+
+low_v_osnorm <- volcano_plots[c("low_2.osnorm_2","low_24.osnorm_24","low_1week.osnorm_1week")]
+plot_grid(plotlist=low_v_osnorm , rel_widths =c(1,1,1), nrow = 1)
+
+# plot_grid(plotlist=volcano_plots)
+
+```
+
 
