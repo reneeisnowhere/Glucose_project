@@ -276,7 +276,8 @@ plot <- df_nomtable %>%
   ggtitle(paste0("(p < ",setp_value," ) ",type," terms found in\n ",category," differentiated genes"))
 
 
-return(list(table = table, plot = plot))
+return(list(table = table, 
+            plot = plot))
 }
 
 
@@ -322,9 +323,11 @@ gost_results <- gost(query = symbol_list,
 
 for (i in sig_contrast_list){
   res <- GO_KEGG_analysis(gost_results, category = i, type="GO:BP",setp_value = 0.05)
-  cat("#####", i, "\n\n")  # adds a section heading in RMarkdown 
-  print(res$table)
-  print(res$plot)
+  cat("##### ", i, "\n\n")  # adds a section heading in RMarkdown 
+  htmltools::tagList(
+    res$table,
+    plot(res$plot)
+  )
   
 }
 ```
