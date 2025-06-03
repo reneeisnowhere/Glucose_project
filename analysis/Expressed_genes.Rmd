@@ -311,8 +311,10 @@ gost_results <- gost(query = symbol_list,
                      custom_bg = expressed_gene_list$ENTREZID,
                      sources = c("GO:BP", "GO:MF", "GO:CC", "KEGG"))
 # gostplot(gost_results, capped = TRUE, interactive = FALSE)
+```
 
 
+```{r gost func res, results='asis'}
 for (i in sig_contrast_list){
   res <- GO_KEGG_analysis(gost_results, category = i, type="GO:BP",setp_value = 0.05)
   print(res$table)
