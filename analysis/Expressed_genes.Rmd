@@ -238,25 +238,24 @@ GO_KEGG_analysis <- function(df,category,type, setp_value=1){
    # fill_color <- mrc_palette[a] %||% "darkgrey"
    
 table <- df_nomtable %>%
-  # dplyr::filter(source==type) %>% 
-  dplyr::filter(p_value < setp_value) %>% 
-  mutate_at(.vars = 6, .funs = scientific_format()) %>%
-  datatable(
-    caption = htmltools::tags$caption(
-      style = "caption-side: top; text-align: left;",
-      paste0("Significant (p < ", setp_value, ") ", type, " terms found in ", category, " differentiated genes")
-    ),
-    options = list(
-      scrollX = TRUE,
-      scrollY = "400px",
-      pageLength = 10,
-      lengthChange = FALSE,
-      dom = 'tip',  # hide search bar & row count dropdown
-      stripeClasses = c("striped", "hover")
-    ),
-    rownames = FALSE,
-    class = 'stripe hover compact'
-  )
+    filter(p_value < setp_value) %>%
+    mutate(p_value = scientific_format()(p_value)) %>%
+    DT::datatable(
+      caption = htmltools::tags$caption(
+        style = "caption-side: top; text-align: left;",
+        paste0("Significant (p < ", setp_value, ") ", type, " terms found in ", category, " differentiated genes")
+      ),
+      options = list(
+        scrollX = TRUE,
+        scrollY = "400px",
+        pageLength = 10,
+        lengthChange = FALSE,
+        dom = 'tip',
+        stripeClasses = c("striped", "hover")
+      ),
+      rownames = FALSE,
+      class = 'stripe hover compact'
+    )
 
 # plot the table as ggplot object
 plot <- df_nomtable %>%
