@@ -1,0 +1,320 @@
+---
+title: "Expressed_genes"
+author: "Renee Matthews"
+date: "2025-06-02"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	dev = c("png","pdf")
+)
+```
+
+```{css, echo=FALSE}
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+pre[class] {
+  max-height: 200px;
+}
+```
+
+```{r packages}
+library(tidyverse)
+library(kableExtra)
+library(broom)
+library(RColorBrewer)
+library("TxDb.Hsapiens.UCSC.hg38.knownGene")
+library("org.Hs.eg.db")
+library(rtracklayer)
+library(edgeR)
+library(ggfortify)
+library(limma)
+library(readr)
+library(BiocGenerics)
+library(gridExtra)
+library(VennDiagram)
+library(scales)
+library(BiocParallel)
+library(ggpubr)
+library(devtools)
+library(eulerr)
+library(ggsignif)
+library(plyranges)
+library(ggrepel)
+library(ComplexHeatmap)
+library(cowplot)
+library(smplot2)
+library(data.table)
+library(DT)
+library(gprofiler2)
+
+
+```
+##### Data frames  
+
+```{r loading data}
+top_tables <- readRDS("data/first_deg_top_tables.RDS")
+
+# Code to combine all of them into the long format:
+# top_df <- map2_dfr(top_tables, names(top_tables), ~ mutate(.x, contrast = .y), .id = "contrast_id")
+
+sample_info_concat <- read_tsv("data/Annotation_data/organized_sample_info.tsv")
+Counts_table <- read_tsv("data/Annotation_data/Full_counts_table.tsv") 
+
+raw_counts <- Counts_table %>% 
+  column_to_rownames("Geneid") %>% 
+  as.matrix()
+new_names <-
+sample_info_concat %>% 
+  mutate(new_trt= case_when(`Conc(mM)`=="0"~ "low",
+                            `Conc(mM)`=="5"~ "norm",
+                            `Conc(mM)`=="5+25" ~"osnorm",
+                            `Conc(mM)`=="30"~ "high")) %>% 
+  mutate(sex=case_when(Line=="75-1"~ "f",
+                       Line=="87-1"~ "f",
+                       Line=="78-1" ~"f",
+                       Line=="17-3"~ "m",
+                       Line=="84-1"~"m",
+                       Line=="90-1"~"m")) %>% 
+  mutate(new_name=paste0(Individual,"_",new_trt,"_",Time,"_",sex,"_",Replicate)) 
+
+mapped <- AnnotationDbi::select(org.Hs.eg.db,
+                 keys = row.names(raw_counts),
+                 columns = c("SYMBOL"),
+                 keytype = "ENTREZID")
+
+mapped_unique_symbolref <- mapped %>%
+  as.data.frame() %>% 
+  group_by(ENTREZID) %>%
+  dplyr::slice(1) %>%
+  ungroup()
+
+filter_out_sample_list <-new_names %>% 
+  dplyr::filter(Core_ID!= "MCW_OJ_JT_R_16") %>% 
+  dplyr::filter(Replicate != "B")
+
+filter_out_sample_list %>% 
+  datatable(., caption = htmltools::tags$caption(
+            style = 'caption-side: top; text-align: left; font-size: 18px; font-weight: bold;',
+            'List of all samples used for this project'
+          ),
+            options = list(scrollX = TRUE,
+                              scrollY = "500px",
+                              scrollCollapse = TRUE,
+                              fixedColumns= list(leftColumns = 2),
+                              fixedHeader = TRUE),
+            extensions = c("FixedColumns","Scroller"),
+            class = "display")
+
+
+```
+
+```{r subsetting and renaming columns}
+subset_raw_counts <- raw_counts[,colnames(raw_counts) %in% filter_out_sample_list$Core_ID]
+rename_vec <- setNames(new_names$new_name, new_names$Core_ID)
+valid_cols <- intersect(colnames(subset_raw_counts), new_names$Core_ID)
+subset_raw_counts <- subset_raw_counts %>% 
+  as.data.frame() %>% 
+  rename_with(~ rename_vec[.x], .cols = all_of(valid_cols)) %>% 
+  as.matrix()
+# saveRDS(subset_raw_counts,"data/subset_raw_counts.RDS")
+```
+
+
+```{r annotation df}
+annotation_dataframe <-  data.frame(timeset = colnames(subset_raw_counts)) %>% 
+  separate_wider_delim(.,cols=timeset, names=c("indv","glucose","time","sex","rep"),delim="_")%>% 
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")),
+         condition=interaction(time,glucose),
+         names=paste0(indv,"_",glucose,"_",time,"_",sex,"_",rep)) %>% 
+  mutate(condition=factor(condition)) %>% 
+  column_to_rownames("names")
+
+lcpm <- cpm(subset_raw_counts, log= TRUE)
+  ### for determining the basic cutoffs
+subset_filt_raw_counts <- subset_raw_counts[rowMeans(lcpm)> 0,]
+
+expressed_gene_list <- mapped_unique_symbolref %>% 
+  dplyr::filter(ENTREZID %in% row.names(subset_filt_raw_counts))
+
+```
+### Top 3 Differential expression, log2cpm
+
+```{r DEG examine}
+log_cpm_filt <- subset_filt_raw_counts %>% 
+  cpm(.,log=TRUE) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "gene")
+
+top3_genes_table <- map2_dfr(top_tables, names(top_tables), function(df, contrast_name) {
+  df %>%
+    arrange(adj.P.Val) %>%
+    slice_head(n = 3) %>%
+    select(gene, adj.P.Val, logFC) %>%
+    mutate(contrast = contrast_name)
+})
+
+longform_lcpm_top3 <- top3_genes_table %>%
+  left_join(., mapped_unique_symbolref, by =c("gene"="ENTREZID")) %>% 
+  left_join(., log_cpm_filt, by = c("gene"="gene")) %>% 
+  pivot_longer(cols= -c(gene,adj.P.Val,logFC,contrast,SYMBOL),
+               names_to = "sample",
+               values_to = "log2cpm") %>% 
+  separate_wider_delim(., sample, names=c("indv","glucose","time","sex","rep"), delim = "_") %>% 
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")),
+         condition=interaction(time,glucose),
+         names=paste0(indv,"_",glucose,"_",time,"_",sex,"_",rep)) %>% 
+  mutate(condition=factor(condition)) 
+  
+longform_lcpm_top3 %>% 
+  ggplot(., aes(x=condition,y=log2cpm))+
+  geom_boxplot(aes(fill=condition))+
+  facet_wrap(SYMBOL~contrast)+
+  theme_bw()
+
+
+plots <-
+  longform_lcpm_top3 %>% 
+  split(.$contrast) %>% 
+  lapply(function(df) {
+    ggplot(df, aes(x=condition,y=log2cpm))+
+      geom_boxplot(aes(fill=glucose))+
+      facet_wrap(~SYMBOL)+
+      ggtitle(unique(df$contrast)) +
+      theme_bw()+
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5))
+ })
+for (p in plots) {
+  print(p)
+}
+
+```
+### GO analysis of top DEGs in categories with DEGs 
+
+```{r GO plot function}
+GO_KEGG_analysis <- function(df,category,type, setp_value=1){
+# Extract the name of the dataframe
+   a <- category
+   filt_result <- df$result %>%
+  dplyr::filter(query == category &source ==type) %>%
+  dplyr::arrange(p_value) #%>%
+  # dplyr::slice_head(n = 10)
+
+ # Prepare the table output
+  df_nomtable <-  filt_result %>% 
+  dplyr::select(c(source, term_id,
+                  term_name,intersection_size, 
+                   term_size, p_value))
+# Create a color palette for different dataframe names
+  # You can customize this color palette as needed  
+  
+  # mrc_palette <- c(
+  #   "EAR_open" = "#F8766D",
+  #   "EAR_close" = "#f6483c",
+  #   "ESR_open" = "#7CAE00",
+  #   "ESR_close" = "#587b00",
+  #   "ESR_opcl" = "cornflowerblue",
+  #   "ESR_clop"= "grey60",
+  #    "LR_open" = "#00BFC4",
+  #    "LR_close" = "#008d91",
+  #    "NR" = "#C77CFF"
+  # )
+   # Use the dataframe name as the fill color (fallback to black if name is not in the palette)
+   # fill_color <- mrc_palette[a] %||% "darkgrey"
+   
+table <- df_nomtable %>%
+  # dplyr::filter(source==type) %>% 
+  dplyr::filter(p_value < setp_value) %>% 
+  mutate_at(.vars = 6, .funs = scientific_format()) %>%
+  kable(.,caption = paste0("Significant (p < ",setp_value," ) ",type," terms found in ",category,"  differentiated genes")) %>%
+  kable_paper("striped", full_width = FALSE) %>%
+  kable_styling(
+    full_width = FALSE,
+    position = "left",
+    bootstrap_options = c("striped", "hover")
+  ) %>%
+  scroll_box(width = "100%", height = "400px")
+
+# plot the table as ggplot object
+plot <- df_nomtable %>%
+  filter(source==type) %>% 
+  slice_head(n=10) %>%
+    dplyr::filter(p_value < setp_value) %>% 
+  mutate(log10_p=(-log(p_value, base=10))) %>% 
+  ggplot(., aes(x=log10_p, y=reorder(term_name, log10_p)))+
+    # geom_col(fill=fill_color)+
+  geom_col()+
+  geom_vline(aes(xintercept=-log(0.05,base = 10)), col="red",linetype = 2)+
+  theme_bw()+
+  ylab("")+
+  xlab(paste0("-log10 p-value"))+
+  guides(fill="none")+
+  theme(axis.text.y = element_text(color="black"),
+        base_size=18)+
+  ggtitle(paste0("(p < ",setp_value," ) ",type," terms found in\n ",category," differentiated genes"))
+
+
+print(table)
+print(plot)
+}
+
+
+```
+
+```{r gost func, fig.height=5}
+sig_genes_table <- map2_dfr(top_tables, names(top_tables), function(df, contrast_name) {
+  df %>%
+    arrange(adj.P.Val) %>%
+    dplyr::filter(adj.P.Val<0.05) %>% 
+    select(gene, adj.P.Val, logFC) %>%
+    mutate(contrast = contrast_name) %>% 
+    left_join(., mapped_unique_symbolref, by =c("gene"="ENTREZID")) 
+})
+
+sig_contrast_list <- unique(sig_genes_table$contrast) 
+
+
+symbol_logfc_list <- sig_genes_table %>%
+  group_split(contrast) %>%
+  set_names(map_chr(., ~ unique(.x$contrast))) %>%
+  map(~ .x %>%
+        dplyr::select(SYMBOL, logFC) %>%
+        distinct(SYMBOL, .keep_all = TRUE) %>% 
+        arrange(desc(abs(logFC)))
+     )
+
+symbol_list <- symbol_logfc_list %>%
+  purrr::map(~ .x$SYMBOL)
+
+gost_results <- gost(query = symbol_list,
+                     organism = "hsapiens",
+                     significant = FALSE,
+                     domain_scope="custom",
+                     measure_underrepresentation = FALSE,
+                     evcodes = FALSE,
+                     user_threshold = 0.05,
+                     correction_method = "fdr",
+                     custom_bg = expressed_gene_list$ENTREZID,
+                     sources = c("GO:BP", "GO:MF", "GO:CC", "KEGG"))
+# gostplot(gost_results, capped = TRUE, interactive = FALSE)
+
+
+for (i in sig_contrast_list){
+  GO_KEGG_analysis(gost_results, category = i, type="GO:BP",setp_value = 0.05)
+}
+```
+
