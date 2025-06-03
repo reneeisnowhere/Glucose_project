@@ -180,11 +180,11 @@ longform_lcpm_top3 <- top3_genes_table %>%
          names=paste0(indv,"_",glucose,"_",time,"_",sex,"_",rep)) %>% 
   mutate(condition=factor(condition)) 
   
-longform_lcpm_top3 %>% 
-  ggplot(., aes(x=condition,y=log2cpm))+
-  geom_boxplot(aes(fill=condition))+
-  facet_wrap(SYMBOL~contrast)+
-  theme_bw()
+# longform_lcpm_top3 %>% 
+#   ggplot(., aes(x=condition,y=log2cpm))+
+#   geom_boxplot(aes(fill=condition))+
+#   facet_wrap(SYMBOL~contrast)+
+#   theme_bw()
 
 
 plots <-
@@ -203,7 +203,8 @@ for (p in plots) {
 }
 
 ```
-### GO analysis of top DEGs in categories with DEGs 
+### GO analysis of top DEGs in categories with DEGs  
+
 
 ```{r GO plot function}
 GO_KEGG_analysis <- function(df,category,type, setp_value=1){
@@ -240,14 +241,22 @@ table <- df_nomtable %>%
   # dplyr::filter(source==type) %>% 
   dplyr::filter(p_value < setp_value) %>% 
   mutate_at(.vars = 6, .funs = scientific_format()) %>%
-  kable(.,caption = paste0("Significant (p < ",setp_value," ) ",type," terms found in ",category,"  differentiated genes")) %>%
-  kable_paper("striped", full_width = FALSE) %>%
-  kable_styling(
-    full_width = FALSE,
-    position = "left",
-    bootstrap_options = c("striped", "hover")
-  ) %>%
-  scroll_box(width = "100%", height = "400px")
+  datatable(
+    caption = htmltools::tags$caption(
+      style = "caption-side: top; text-align: left;",
+      paste0("Significant (p < ", setp_value, ") ", type, " terms found in ", category, " differentiated genes")
+    ),
+    options = list(
+      scrollX = TRUE,
+      scrollY = "400px",
+      pageLength = 10,
+      lengthChange = FALSE,
+      dom = 'tip',  # hide search bar & row count dropdown
+      stripeClasses = c("striped", "hover")
+    ),
+    rownames = FALSE,
+    class = 'stripe hover compact'
+  )
 
 # plot the table as ggplot object
 plot <- df_nomtable %>%
