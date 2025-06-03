@@ -276,7 +276,7 @@ plot <- df_nomtable %>%
   ggtitle(paste0("(p < ",setp_value," ) ",type," terms found in\n ",category," differentiated genes"))
 
 
-print(table)
+htmltools::browsable(table)
 print(plot)
 }
 
