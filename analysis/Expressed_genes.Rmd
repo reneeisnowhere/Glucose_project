@@ -238,24 +238,17 @@ GO_KEGG_analysis <- function(df,category,type, setp_value=1){
    # fill_color <- mrc_palette[a] %||% "darkgrey"
    
 table <- df_nomtable %>%
-    filter(p_value < setp_value) %>%
-    mutate(p_value = scientific_format()(p_value)) %>%
-    DT::datatable(
-      caption = htmltools::tags$caption(
-        style = "caption-side: top; text-align: left;",
-        paste0("Significant (p < ", setp_value, ") ", type, " terms found in ", category, " differentiated genes")
-      ),
-      options = list(
-        scrollX = TRUE,
-        scrollY = "400px",
-        pageLength = 10,
-        lengthChange = FALSE,
-        dom = 'tip',
-        stripeClasses = c("striped", "hover")
-      ),
-      rownames = FALSE,
-      class = 'stripe hover compact'
-    )
+  # dplyr::filter(source==type) %>% 
+  dplyr::filter(p_value < setp_value) %>% 
+  mutate_at(.vars = 6, .funs = scientific_format()) %>%
+  kable(.,caption = paste0("Significant (p < ",setp_value," ) ",type," terms found in ",category,"  differentiated genes")) %>%
+  kable_paper("striped", full_width = FALSE) %>%
+  kable_styling(
+    full_width = FALSE,
+    position = "left",
+    bootstrap_options = c("striped", "hover")
+  ) %>%
+  scroll_box(width = "100%", height = "400px")
 
 # plot the table as ggplot object
 plot <- df_nomtable %>%
@@ -276,14 +269,13 @@ plot <- df_nomtable %>%
   ggtitle(paste0("(p < ",setp_value," ) ",type," terms found in\n ",category," differentiated genes"))
 
 
-return(list(table = table, 
-            plot = plot))
+return(list(table = table, plot = plot))
 }
 
 
 ```
 
-```{r show_GO_results, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+```{r gost func, fig.height=5}
 sig_genes_table <- map2_dfr(top_tables, names(top_tables), function(df, contrast_name) {
   df %>%
     arrange(adj.P.Val) %>%
@@ -323,12 +315,8 @@ gost_results <- gost(query = symbol_list,
 
 for (i in sig_contrast_list){
   res <- GO_KEGG_analysis(gost_results, category = i, type="GO:BP",setp_value = 0.05)
-  cat("##### ", i, "\n\n")  # adds a section heading in RMarkdown 
-  htmltools::tagList(
-    res$table,
-    plot(res$plot)
-  )
-  
+  print(res$table)
+  print(res$plot)
 }
 ```
 
