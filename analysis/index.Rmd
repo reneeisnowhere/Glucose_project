@@ -18,5 +18,5 @@ Hello!  I am working on understanding the effects of glucose on iPSC-derived car
 
 [Examining differentially expressed genes](https://reneeisnowhere.github.io/Glucose_project/Expressed_genes.html)
 
-[Examining Cormotif patterns](https://reneeisnowhere.github.io/Glucose_project/Cormotif_application.html)
+[Examining Cormotif patterns to 5 mM glucose levels](https://reneeisnowhere.github.io/Glucose_project/Cormotif_application.html)
 
