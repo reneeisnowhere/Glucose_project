@@ -1,0 +1,177 @@
+---
+title: "Cormotif_application"
+author: "Renee Matthews"
+date: "2025-06-03"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	dev = c("png","pdf")
+)
+```
+
+```{css, echo=FALSE}
+pre {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+pre[class] {
+  max-height: 200px;
+}
+```
+
+```{r packages}
+library(tidyverse)
+library(kableExtra)
+library(broom)
+library(RColorBrewer)
+library("TxDb.Hsapiens.UCSC.hg38.knownGene")
+library("org.Hs.eg.db")
+library(rtracklayer)
+library(edgeR)
+library(ggfortify)
+library(limma)
+library(readr)
+library(BiocGenerics)
+library(gridExtra)
+library(VennDiagram)
+library(scales)
+library(BiocParallel)
+library(ggpubr)
+library(devtools)
+library(eulerr)
+library(ggsignif)
+library(plyranges)
+library(ggrepel)
+library(ComplexHeatmap)
+library(cowplot)
+library(smplot2)
+library(data.table)
+library(DT)
+library(gprofiler2)
+
+
+```
+
+```{r echo=TRUE, file='code/corMotifcustom.R'}
+
+```
+
+```{r loading data}
+subset_raw_counts <- readRDS("data/subset_filt_raw_counts.RDS")
+
+annotation_dataframe <-  data.frame(timeset = colnames(subset_raw_counts)) %>% 
+  separate_wider_delim(.,cols=timeset, names=c("indv","glucose","time","sex","rep"),delim="_")%>% 
+  mutate(indv=factor(indv, levels= c( "1","2","3","4","5","6")),
+         glucose=factor(glucose, levels=c("low", "norm", "osnorm", "high")),
+         time=factor(time, levels = c("2hr" ,"24hr", "1week")),
+         sex=factor(sex, levels=c("f","m")),
+         rep=factor(rep, levels=c("A","B")),
+         condition=interaction(time,glucose),
+         names=paste0(indv,"_",glucose,"_",time,"_",sex,"_",rep)) %>% 
+  mutate(condition=factor(condition)) %>% 
+  column_to_rownames("names")
+
+group <- annotation_dataframe$condition
+levels(group)
+```
+
+```{r way to make compid did not use, eval=FALSE}
+conds <- c("2hr.low", "24hr.low", "1week.low", "2hr.norm", "24hr.norm", "1week.norm",
+           "2hr.osnorm", "24hr.osnorm", "1week.osnorm", "2hr.high", "24hr.high", "1week.high")
+
+# Extract timepoints and groups
+timepoints <- c("2hr", "24hr", "1week")
+groups <- c("low", "norm", "osnorm", "high")
+
+# Initialize empty vectors to store indices for compid
+c1 <- c()
+c2 <- c()
+
+for (tp in timepoints) {
+  # Find indices for groups in this timepoint
+  idx_low <- which(conds == paste0(tp, ".low"))
+  idx_norm <- which(conds == paste0(tp, ".norm"))
+  idx_osnorm <- which(conds == paste0(tp, ".osnorm"))
+  idx_high <- which(conds == paste0(tp, ".high"))
+  
+  # low vs norm
+  c1 <- c(c1, idx_low)
+  c2 <- c(c2, idx_norm)
+  
+  # osnorm vs norm
+  c1 <- c(c1, idx_osnorm)
+  c2 <- c(c2, idx_norm)
+  
+  # high vs norm
+  c1 <- c(c1, idx_high)
+  c2 <- c(c2, idx_norm)
+  
+  # high vs osnorm
+  c1 <- c(c1, idx_high)
+  c2 <- c(c2, idx_osnorm)
+  
+  # low vs osnorm
+  c1 <- c(c1, idx_low)
+  c2 <- c(c2, idx_osnorm)
+}
+
+compid <- data.frame(c1 = c1, c2 = c2)
+print(compid)
+```
+
+
+```{r}
+
+group <- annotation_dataframe$condition
+groupid <- factor(group)
+groupid <- as.numeric(groupid)
+dge <-  DGEList.data.frame(counts = subset_raw_counts, group = group, genes = row.names(subset_raw_counts))
+dge <- calcNormFactors(dge)
+dge$samples
+tmm_cpm_dge <- cpm(dge,log=TRUE)
+compid <- data.frame(c1= c(1,2,3,7,8,9,10,11,12,10,11,12,1,2,3),c2=c(4,5,6,4,5,6,4,5,6,7,8,9,7,8,9))
+table(groupid)
+table(compid)
+names_of_levels <- (data.frame(idlevel=(levels(group)),number=c(1:12)))
+
+```
+
+```{r Cormotif run, eval=FALSE}
+set.seed(31415)
+cormotif_initial_norm <- cormotiffit(exprs = tmm_cpm_dge, groupid = groupid, compid = compid, K=1:8, max.iter = 500, runtype = "logCPM")
+
+saveRDS(cormotif_initial_norm,"data/Cormotif_initial.RDS")
+###used compid <- data.frame(c1= c(1,2,3,7,8,9,10,11,12,10,11,12,1,2,3),c2=c(4,5,6,4,5,6,4,5,6,7,8,9,7,8,9))
+
+
+```
+
+```{r}
+cormotif_initial_norm <- readRDS("data/Cormotif_initial.RDS")
+plotIC(cormotif_initial_norm)
+plotMotif(cormotif_initial_norm)
+
+name_of_study <- c("2hr.low_vs_2hr.norm",
+                     "24hr.low_vs_24hr.norm",
+                     "1week.low_vs_1week.norm",
+                     "2hr.osnorm_vs_2hr.norm",
+                     "24hr.osnorm_vs_24hr.norm",
+                     "1week.osnorm_vs_1week.norm",
+                     "2hr.high_vs_2hr.norm",
+                     "24hr.high_vs_24hr.norm",
+                     "1week.high_vs_1week.norm", 
+                     "2hr.high_vs_2hr.osnorm",
+                     "24hr.high_vs_24hr.osnorm",
+                     "1week.high_vs_1week.osnorm", 
+                     "2hr.low_vs_2hr.osnorm",
+                     "24hr.low_vs_24hr.osnorm",
+                     "1week.low_vs_1week.osnorm")
+print(name_of_study)
+
+```
+
